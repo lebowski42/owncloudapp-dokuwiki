@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<info>
+	<id>DokuWiki</id>
+	<name>DokuWiki</name>
+	<licence>GPL</licence>
+	<author>Martin Schulte</author>
+	<require>5.01</require>
+	<shipped>false</shipped>
+	<description>
+	With this app you can use ownCloud as file-backend for DokuWiki. 
+	You have to create a external local storage. Files in this storage
+	can be used in DokuWiki, if you install the DokuWiki-plugin 'ownCloud'.
+	
+	This app wil sanitize filenames that way, they can be used in
+	DokuWiki (no spaces, ...)
+	
+	Moving files in ownCloud doesn't affect wikipages using this file,
+	becaus DokuWiki will use the fileID from the ownCloud database.
+	
+	This app also provides a menu-entry to generate a wikilink, display
+	the authors or opening the detail-page.
+	
+	This app was developed using the code of the files_version-app for
+	ownCloud, written by Frank Karlitschek. For everything outside the
+	DokuWiki-Storage, this app behaves in the same way as the 
+	files_version app (it is the same code).
+	Inside the DokuWiki-Storage for versioning the DokuWiki-versioning-
+	system is used.
+	Because of this, you have to disable the files_version app.
+	
+	For more details see: https://www.dokuwiki.org/plugin:owncloud
+	</description>
+	<types>
+		<filesystem/>
+	</types>
+	<default_enable/>
+</info>
