@@ -43,7 +43,7 @@ if(!isset($_GET['file'])){
 			OCP\JSON::error(array("data" => array( "message" => "Cannot get metadata.")));
 		}
 	}else{
-			OCP\JSON::error(array("data" => array( "message" => "No metadatafile found.")));
+			OCP\JSON::error(array("data" => array( "message" => "No authorlist available")));
 	}	
 }
 

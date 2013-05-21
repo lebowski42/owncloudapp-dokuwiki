@@ -12,22 +12,73 @@
   <name>*dbprefix*files_versions</name>
 
   <declaration>
-
-   <field>
-    <name>user</name>
-    <type>text</type>
-    <default></default>
-    <notnull>true</notnull>
-    <length>64</length>
-   </field>
-   <field>
-    <name>size</name>
-    <type>text</type>
-    <default></default>
-    <notnull>true</notnull>
-    <length>50</length>
-   </field>
+	
+	   <field>
+		<name>user</name>
+		<type>text</type>
+		<default></default>
+		<notnull>true</notnull>
+		<length>64</length>
+	   </field>
+	   <field>
+		<name>size</name>
+		<type>text</type>
+		<default></default>
+		<notnull>true</notnull>
+		<length>50</length>
+	   </field>
+  
    
+  </declaration>
+
+ </table>
+ 
+ <table>
+
+  <name>*dbprefix*dokuwiki_media_use</name>
+
+  <declaration>
+	
+	   <field>
+		<name>fileid</name>
+		<type>integer</type>
+		<default></default>
+		<notnull>true</notnull>
+		<length>4</length>
+	   </field>
+	   <field>
+		<name>wikipage</name>
+		<type>text</type>
+		<default></default>
+		<notnull>true</notnull>
+		<length>512</length>
+	   </field>
+	   <field>
+		<name>wikipage_hash</name>
+		<type>text</type>
+		<default></default>
+		<notnull>true</notnull>
+		<length>32</length>
+	   </field>
+	    <field>
+		<name>firstheading</name>
+		<type>text</type>
+		<default></default>
+		<notnull>false</notnull>
+		<length>64</length>
+	   </field>
+	<index>
+		<name>dokuwiki_index</name>
+		<unique>true</unique>
+			<field>
+				<name>fileid</name>
+				<sorting>ascending</sorting>
+			</field>
+			<field>
+				<name>wikipage_hash</name>
+				<sorting>ascending</sorting>
+			</field>
+	</index>
   </declaration>
 
  </table>

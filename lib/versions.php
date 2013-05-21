@@ -185,6 +185,7 @@ class Storage {
 		// Prevent default behavior, if not inside wiki-folder
 		global $wiki;
 		global $l;
+		global $conf;
 		if(strncmp($old_path, '/'.$wiki, strlen('/'.$wiki)) != 0){
 			list($uid, $oldpath) = self::getUidAndFilename($old_path);
 			list($uidn, $newpath) = self::getUidAndFilename($new_path);
@@ -219,6 +220,22 @@ class Storage {
 				}else{
 					file_put_contents($newmeta,file_get_contents($oldmeta),FILE_APPEND);
 					unlink($oldmeta);
+				}
+				$pathinfo = pathinfo($old_path);
+				$dir = $pathinfo['dirname'];
+				$dir = $conf['mediaolddir'].substr($dir,strlen('/'.$wiki));
+				$filename = $pathinfo['filename'];
+				$ext = $pathinfo['extension'];
+				$pathinfonew = pathinfo($new_path);
+				$newdir = $pathinfonew['dirname'];
+				$newdir = $conf['mediaolddir'].substr($newdir,strlen('/'.$wiki));
+				$newfilename = $pathinfonew['filename'];
+				$newext = $pathinfonew['extension'];
+				$files = scandir($dir);
+				foreach($files as $file){
+					if(preg_match("#$filename\.(\d*)\.$ext*#", $file,$timestamp)){
+							rename($dir.'/'.$file,$newdir.'/'.$newfilename.'.'.$timestamp[1].'.'.$newext);
+					}
 				}
 			}
 			if(!isset($_SERVER['REMOTE_USER'])) $_SERVER['REMOTE_USER'] = \OCP\User::getUser();

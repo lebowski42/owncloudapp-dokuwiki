@@ -1,6 +1,5 @@
 <?php
-if(!defined('DOKU_INC')) define('DOKU_INC', '/var/www/wax/');
-if(!defined('DOKU_INC')) define('DOKU_INC', '/var/www/wax/');
+if(!defined('DOKU_INC')) define('DOKU_INC', OC_Appconfig::getValue('dokuwiki', 'dokuwikibase', '/var/www/dokuwiki').'/');
 if(!defined('DOKU_CONF')) define('DOKU_CONF',DOKU_INC.'conf/');
 global $conf;
 global $config_cascade;

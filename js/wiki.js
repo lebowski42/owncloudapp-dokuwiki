@@ -3,6 +3,8 @@ Wiki={
 	dokuwikiurl: 'http://localhost/wax',
 	dokuwikidetail: '/lib/exe/detail.php',
 	dokuwikibase: '/var/www/wax',
+	dokuwikideaccent: '0',
+	dokuwikisepchar: "_",
 	//From DokuWiki
 	align: "1",
 	link: "2",
@@ -10,33 +12,43 @@ Wiki={
 	forbidden_opts: {},
 	$popup: null,
 	img: true,
+	filenamecache: {},
+	cleanfilenames: {},
 	
+	// original from apps/files/js/files.js
 	isFileNameValid:function (name) {
-		if (name === '.') {
+		//save ajax calls
+		if(name in Wiki.filenamecache && Wiki.filenamecache[name] != undefined) {alert('fcache: '+Wiki.filenamecache[name]);return Wiki.filenamecache[name];}
+		if(name === '.') {
 			OC.Notification.show(t('files', '\'.\' is an invalid file name.'));
 			return false;
 		}
-		if (name.length == 0) {
+		if(name.length == 0) {
 			OC.Notification.show(t('files', 'File name cannot be empty.'));
 			return false;
 		}
+		if(name.toLowerCase() != name){
+			OC.Notification.show(t('dokuwiki', 'The file or folder name must be lowercase'));
+			return false;
+		}
+
+
 
 		// check for invalid characters
 		var invalid_characters = ['\\', '/', '<', '>', ':', '"', '|', '?', '*',')','(',']','[','{','}','&','%','$','§','+','!',' '];
 		for (var i = 0; i < invalid_characters.length; i++) {
 			if (name.indexOf(invalid_characters[i]) != -1) {
-				OC.Notification.show(t('files', "Invalid name, '\\', '/', '<', '>', ':', '\"', '|', '?', '*',')','(',']','[','{','}','&','%','$','§','+','!' and spaces are not allowed."));
+				OC.Notification.show(t('dokuwiki', "Invalid name, \\, /, <, >, :, \", |, ?, *, ), (, ], [, {, }, &, %, $, §, +, ! and spaces are not allowed."));
 				return false;
 			}
 		}
-		var daccent = 1;
 		var success = true;
-		if(daccent){
+		if(Wiki.dokuwikideaccent != '0'){
 			$.ajax({
 					type: 'POST',
 					url: OC.filePath('dokuwiki', 'ajax', 'cleanid.php'),
 					data: {file: name},
-					async: false,
+					async: true,
 					success: function(result){
 						if (result.status == 'success') {
 							success = true;
@@ -49,8 +61,31 @@ Wiki={
 			});
 		}
 		if(success)	OC.Notification.hide();
+		Wiki.filenamecache[name] = success;
 		return success;
 		
+	},
+	
+	sanitizeFilename: function(name){
+		oldname = name;
+		//save ajax calls
+		if(oldname in Wiki.cleanfilenames && Wiki.cleanfilenames[oldname] != undefined) return Wiki.cleanfilenames[oldname];
+		name = name.replace(/ +/g,Wiki.dokuwikisepchar);
+		name = name.toLowerCase();
+		if(Wiki.dokuwikideaccent != '0'){
+			$.when(
+				$.ajax({
+					type: 'POST',
+					url: OC.filePath('dokuwiki', 'ajax', 'cleanid.php'),
+					data: {file: name, ret: '1'},
+					async: false
+				})
+			).done(
+				function(result){ name = result.data.message; }
+			);
+		}
+		Wiki.cleanfilenames[oldname] = name;
+		return name;
 	},
 	
 	getUniqueName: function(name){
@@ -94,23 +129,27 @@ Wiki={
 		var mmurl = Wiki.dokuwikiurl + '/doku.php' + '?ns=' + encodeURIComponent(dir).replace( /\//g, ':' ).replace( /%2F/g, ':' ).substring(Wiki.wiki.length+1)+'&image='+ wikiid + '&do=media&tab_details=history';
 		var html = '<div id="dropdown" class="drop drop-wiki" data-file="'+escapeHTML(file)+'">';
 		html += '<div id="private" style="margin-bottom: 5px;">';
-		html += '<button name="makelink" id="dokuwikidetail"> <img src="'+OC.imagePath('core','actions/search')+'" style="vertical-align:middle"> Detailseite</button>';
+		html += '<button name="makelink" id="dokuwikidetail"> <img src="'+OC.imagePath('core','actions/search')+'" style="vertical-align:middle"> '+t('dokuwiki', 'details')+'</button>';
 		//html += '<input type="button" value="Detailseite" name="makelink" id="dokuwikidetail" />';
-		html += '<button name="makelink" id="dokuwikimediamanager"> <img src="'+OC.imagePath('core','actions/info')+'" style="vertical-align:middle"> Mediamanager</button>';
+		html += '<button name="makelink" id="dokuwikimediamanager"> <img src="'+OC.imagePath('core','actions/info')+'" style="vertical-align:middle"> '+t('dokuwiki', 'Mediamanager')+'</button>';
 		//html += '<input type="button" value="Mediamanager" name="makelink" id="dokuwikimediamanager" style="margin-left: 5px;"/>';
 		html += '</div>';
 		html += '<div id="private">';
 		html += '<input id="link" style="display:none; width:90%;" />';
 		html += '</div>';
-		html += '<div id="private" style="margin-bottom: 5px;">';
-		html += '<button name="makelink" id="linkconfig"> <img src="'+OC.imagePath('core','actions/password')+'" style="vertical-align:middle"> Linkbauen</button>';
-		//html += '<input type="button" value="Linkbauen" name="makelink" id="linkconfig"  />';
-		html += '<input id="link" style="display:none; width:90%;" />';
+			html += '<div id="private" style="margin-bottom: 5px;">';
+		html += '<button name="usedin" id="usedin"> <img src="'+OC.imagePath('core','actions/password')+'" style="vertical-align:middle"> '+t('dokuwiki', 'Usage on ...')+'</button>';
 		if(!isDir){
-			html += '<button name="makelink" id="authors"> <img src="'+OC.imagePath('core','actions/shared')+'" style="vertical-align:middle"> Autoren</button>';
+			html += '<button name="makelink" id="authors"> <img src="'+OC.imagePath('core','actions/shared')+'" style="vertical-align:middle"> '+t('dokuwiki', 'Authors')+'</button>';
 			//html += '<input type="button" value="Autoren" name="makelink" id="authors"  />';
 		}
 		html += '</div>';
+		html += '<div id="private" style="margin-bottom: 5px;">';
+		html += '<button name="makelink" id="linkconfig"> <img src="'+OC.imagePath('core','filetypes/model.png')+'" style="vertical-align:middle"> '+t('dokuwiki', 'Create wikilink')+'</button>';
+		//html += '<input type="button" value="Linkbauen" name="makelink" id="linkconfig"  />';
+		html += '<input id="link" style="display:none; width:90%;" />';
+		html += '</div>';
+	
 		
 		// highlight
 		$('tr').filterAttr('data-file',filename).addClass('mouseOver');
@@ -129,6 +168,10 @@ Wiki={
 			$("#dropdown").hide();
 			Wiki.authorpopup(file);
 		});
+		$("#usedin").click(function() {
+			$("#dropdown").hide();
+			Wiki.usedinpopup(file);
+		});
 		$("#linkconfig").click(function() {
 			$("#dropdown").hide();
 			if(isDir) Wiki.dirpopup(file);
@@ -139,17 +182,23 @@ Wiki={
 	
 	authorpopup: function(file){
 		$.ajax({url: OC.filePath('dokuwiki', 'ajax', 'authors.php'), async: false, data: {file: encodeURIComponent(file).replace( /%2F/g, ':' ) }, success: function(result) {
-				if (result && result.status == 'success') {
-					authorpopup = jQuery(document.createElement('div'))
+			authorpopup = jQuery(document.createElement('div'))
 						.attr('id', 'fileauthors')
 						.dialog({ width: 280, height: 200,modal: false,
-						draggable: true, title: "Autoren",
-						resizable: true});
-					authorpopup.append('<p><b>'+t('dokuwiki','File')+': '+file+'</b></p><hr/><div>'+result.data.message+'</div>');
-					//OC.dialogs.prompt(result.data.message, 'Autoren');
-				} else {
-					OC.dialogs.alert(result.data.message, t('dokuwiki','No authorlist available'));
-				}
+						draggable: true, title: t('dokuwiki', 'Authors'),
+						resizable: true});	
+			authorpopup.append('<p><b>'+t('dokuwiki','File')+': '+file+'</b></p><hr/><div>'+t('dokuwiki',result.data.message)+'</div>');
+			}});
+	},
+	
+	usedinpopup: function(file){
+		$.ajax({url: OC.filePath('dokuwiki', 'ajax', 'mediaUse.php'), async: false, data: {file: Wiki.wiki +'/'+file}, success: function(result) {
+			usedinpopup = jQuery(document.createElement('div'))
+				.attr('id', 'fileusedin')
+				.dialog({ width: 280, height: 200,modal: false,
+				draggable: true, title: t('dokuwiki', 'Usage on ...'),
+				resizable: true});
+			usedinpopup.append('<p><b>'+t('dokuwiki','File')+': '+file+'</b></p><hr/><div>'+t('dokuwiki',result.data.message)+'</div>');
 			}});
 	},
 	
@@ -201,7 +250,7 @@ Wiki={
                 $btn = jQuery(document.createElement('button'))
                        .addClass('button')
                        .attr('id', "media__" + opt.id + "btn" + (i + 1))
-                       .attr('title', text)
+                       .attr('title', t('dokuwiki', text))
                        .click(bind(Wiki.setOpt, opt.id));//+ Wiki.setOpt
                 
 
@@ -223,7 +272,7 @@ Wiki={
         //+ Textfield for description
         $p = jQuery(document.createElement('p'));
         $p.css('padding-top','5px');
-        $p.html('<label>Description: </label>' +
+        $p.html('<label>'+t('dokuwiki','Image/file title')+':</label>' +
         '<textarea name="desc" id="desc" rows="2" style="overflow:hidden;width:90%;"></textarea>');
         //$p.html('<label>Description: </label>' +
 	      //'<input type="text" name="desc" id="desc" value="" >');
@@ -238,7 +287,7 @@ Wiki={
                   .attr('id', 'media__sendbtn')
                   .attr('type', 'button')
                   .addClass('button')
-                  .val(t('dokuwiki', 'Insert'))
+                  .val(t('dokuwiki', 'Create wikilink'))
                   .click(function(){
 						Wiki.insert(filename, $('#desc'));
 				   });
@@ -260,7 +309,7 @@ Wiki={
         // Textfield for description
         $p = jQuery(document.createElement('p'));
         $p.css('padding-top','5px');
-        $p.html('<label>Description: </label>' +
+        $p.html('<label>'+t('dokuwiki','Image/file title')+'</label>' +
         '<textarea name="desc" id="desc" rows="2" style="overflow:hidden;width:90%;"></textarea>');
         //$p.html('<label>Description: </label>' +
 	      //'<input type="text" name="desc" id="desc" value="" >');
@@ -268,7 +317,7 @@ Wiki={
         // Checkbox for direct
         $p = jQuery(document.createElement('p'));
         $p.css('padding-top','5px');
-        $p.html('<input type="checkbox" name="dirdirect" id="dirdirect" value="direct"> Ordnerinhalt auf der Seite anzeigen?<br>');
+        $p.html('<input type="checkbox" name="dirdirect" id="dirdirect" value="direct"> '+t('dokuwiki','Show the folder content directly on the page?')+'<br>');
         //$p.html('<label>Description: </label>' +
 	      //'<input type="text" name="desc" id="desc" value="" >');
         Wiki.$popup.append($p);
@@ -283,7 +332,7 @@ Wiki={
                   .attr('id', 'media__sendbtn')
                   .attr('type', 'button')
                   .addClass('button')
-                  .val(t('dokuwiki', 'Insert'))
+                  .val(t('dokuwiki', 'Create wikilink'))
                   .click(function(){
 						Wiki.insert(filename, $('#desc'), $('#dirdirect'));
 				   });
@@ -291,9 +340,10 @@ Wiki={
         
         Wiki.$popup.dialog('open');
 	},
-
+	
+	
 	/* This method is original from DokuWiks /lib/scripts/media.js. Written by
-	 * Andreas Gohr <andi@splitbrain.org> andPierre Spring <pierre.spring@caillou.ch>
+	 * Andreas Gohr <andi@splitbrain.org> and Pierre Spring <pierre.spring@caillou.ch>
 	 * 
 	 * Modifications marked with //+
 	*/
@@ -303,6 +353,7 @@ Wiki={
         // set syntax options
         //+ Wiki
         Wiki.$popup.dialog( "destroy" );
+        // We have a directory
 		if(typeof checkbox == "undefined"){
 			opts = '';
 			alignleft = '';
@@ -385,7 +436,7 @@ Wiki={
 			         draggable: true, title: t('dokuwiki', 'Wikilink'),
 			         close:  function(event, ui){$(this).dialog('destroy').remove();},resizable: false});
 		$p = jQuery(document.createElement('p'));
-        $p.html('<label>Hit Ctrl+C to copy the link to clipboard, and hit Ctrl+V then to insert it into the wikitext.</label><br/>' +
+        $p.html('<label>'+t('dokuwiki','Hit Ctrl+C to copy the link to clipboard, and hit Ctrl+V then to insert it into the wikitext.')+'</label><br/>' +
 	      '<input type="text" name="link" id="link" value="'+link+'" style="width:90%;font: 150% monospace;">');
         linkpopup.append($p);
         $insp = jQuery(document.createElement('p'));
@@ -541,9 +592,122 @@ Wiki={
 			return true;
 		}
 		return false;
-	}
-}
+	},
+	// Original from apps/files/js/filelist.js
+	// Changed  FileList.isFilenameValid and FileList.checkname to Wiki.... 
+	rename:function(name){
+		var tr, td, input, form;
+		tr=$('tr').filterAttr('data-file',name);
+		tr.data('renaming',true);
+		td=tr.children('td.filename');
+		input=$('<input class="filename"/>').val(name);
+		form=$('<form></form>');
+		form.append(input);
+		td.children('a.name').hide();
+		td.append(form);
+		input.focus();
+		form.submit(function(event){
+			event.stopPropagation();
+			event.preventDefault();
+			var newname=Wiki.sanitizeFilename(input.val());
+			input.val(newname);
+			if (!Wiki.isFileNameValid(newname)) {
+				form.remove();
+				td.children('a.name').show();
+				return false;
+			} else if (newname != name) {
+				if (Wiki.fileAlreadyExists(name, newname, false)) {
+					newname = name;
+				} else {
+					$.get(OC.filePath('files','ajax','rename.php'), { dir : $('#dir').val(), newname: newname, file: name },function(result) {
+						if (!result || result.status == 'error') {
+							OC.dialogs.alert(result.data.message, 'Error moving file');
+							newname = name;
+						}
+					});
 
+				}
+			}
+			tr.data('renaming',false);
+			tr.attr('data-file', newname);
+			var path = td.children('a.name').attr('href');
+			td.children('a.name').attr('href', path.replace(encodeURIComponent(name), encodeURIComponent(newname)));
+			if (newname.indexOf('.') > 0 && tr.data('type') != 'dir') {
+				var basename=newname.substr(0,newname.lastIndexOf('.'));
+			} else {
+				var basename=newname;
+			}
+			td.find('a.name span.nametext').text(basename);
+			if (newname.indexOf('.') > 0 && tr.data('type') != 'dir') {
+				if (td.find('a.name span.extension').length == 0 ) {
+					td.find('a.name span.nametext').append('<span class="extension"></span>');
+				}
+				td.find('a.name span.extension').text(newname.substr(newname.lastIndexOf('.')));
+			}
+			form.remove();
+			td.children('a.name').show();
+			return false;
+		});
+		input.keyup(function(event){
+			if (event.keyCode == 27) {
+				tr.data('renaming',false);
+				form.remove();
+				td.children('a.name').show();
+			}
+		});
+		input.click(function(event){
+			event.stopPropagation();
+			event.preventDefault();
+		});
+		input.blur(function(){
+			form.trigger('submit');
+		});
+	},
+	// Original from apps/files/js/filelist.js
+	// Here only if file exists is checked.
+	fileAlreadyExists:function(oldName, newName) {
+		if ($('tr').filterAttr('data-file', newName).length > 0) {
+			var html;
+			html = t('files', '{new_name} already exists', {new_name: escapeHTML(newName)});
+			html = $('<span>' + html + '</span>');
+			html.attr('data-oldName', oldName);
+			html.attr('data-newName', newName);
+			html.attr('data-isNewFile', false);
+			OC.Notification.showHtml(html);
+			return true;
+		}
+		return false;
+	},
+	checkName:function(modName, newName, isNewFile) {
+		if (isNewFile || $('tr').filterAttr('data-file', newName).length > 0) {
+			var html;
+			if(modName == Wiki.sanitizeFilename(newName)){
+					html = t('files', '{new_name} Here we are', {new_name: escapeHTML(newName)});	
+			}else{
+				if(isNewFile){
+					html = t('files', '{new_name} already 1exists', {new_name: escapeHTML(newName)})+'<span class="replace">'+t('files', 'replace')+'</span><span class="suggest">'+t('files', 'suggest name')+'</span>&nbsp;<span class="cancel">'+t('files', 'cancel')+'</span>';
+				}else{
+					html = t('files', '{new_name} already 2exists', {new_name: escapeHTML(newName)})+'<span class="replace">'+t('files', 'replace')+'</span><span class="cancel">'+t('files', 'cancel')+'</span>';
+				}
+			}
+			html = $('<span>' + html + '</span>');
+			html.attr('data-oldName', modName);
+			html.attr('data-newName', newName);
+			html.attr('data-isNewFile', isNewFile);
+            OC.Notification.showHtml(html);
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	
+}
+// Set configvalues
+OC.AppConfig.getCall('getValue',{app:'dokuwiki',key:'dokuwikibase',defaultValue:'wiki'},function(q){Wiki.dokuwikibase = q;});
+OC.AppConfig.getCall('getValue',{app:'dokuwiki',key:'dokuwikiurl',defaultValue:'wiki'},function(q){Wiki.dokuwikiurl = q;});
+OC.AppConfig.getCall('getValue',{app:'dokuwiki',key:'dokuwikideaccent',defaultValue:'wiki'},function(q){Wiki.dokuwikideaccent = q;});
+OC.AppConfig.getCall('getValue',{app:'dokuwiki',key:'dokuwikisepchar',defaultValue:'wiki'},function(q){Wiki.dokuwikisepchar = q;});
 
 function bind(fnc/*, ... */) {
     var Aps = Array.prototype.slice,
@@ -561,6 +725,322 @@ function bind(fnc/*, ... */) {
                          static_args.concat(Aps.call(arguments, 0)));
     };
 }
+
+
+$(document).ready(function(){
+	// Overwrite getUniqueName from apps/files/js/files.js (line 1061-1084) to sanitize filename for new files and folders
+	getUniqueName = function(newname){
+			return Wiki.getUniqueName(Wiki.sanitizeFilename(newname));
+	}
+	
+	
+	if (typeof FileActions !== 'undefined') {
+		// Add versions button to 'files/index.php', but only outside the wiki-folder.
+		if($('#dir').val().substr(0, 5) != '/'+Wiki.wiki){
+			FileActions.register(
+				'file'
+				, t('dokuwiki', 'Versions')
+				, OC.PERMISSION_UPDATE
+				, function() {
+					// Specify icon for history button
+					return OC.imagePath('core','actions/history');
+				}
+				,function(filename){
+					// Action to perform when clicked
+					if (scanFiles.scanning){return;}//workaround to prevent additional http request block scanning feedback
+
+					var file = $('#dir').val()+'/'+filename;
+					// Check if drop down is already visible for a different file
+					if (($('#dropdown').length > 0) && $('#dropdown').hasClass('drop-versions') ) {
+						if (file != $('#dropdown').data('file')) {
+							$('#dropdown').hide('blind', function() {
+								$('#dropdown').remove();
+								$('tr').removeClass('mouseOver');
+								createVersionsDropdown(filename, file);
+							});
+						}
+					} else {
+						createVersionsDropdown(filename, file);
+					}
+				}
+			);
+		}else{
+			FileActions.register(
+				'file'
+				, t('dokuwiki', 'Wiki')
+				, OC.PERMISSION_READ
+				, function() {
+					// Specify icon for wiki menu entry
+					return OC.imagePath('core','actions/history');
+				}
+				,function(filename){
+					// Action to perform when clicked
+					if (scanFiles.scanning){return;}//workaround to prevent additional http request block scanning feedback
+					var dir = $('#dir').val();
+					var file = dir+'/'+filename;
+					if (($('#dropdown').length > 0) && $('#dropdown').hasClass('drop-wiki') ) {
+						$('#dropdown').hide('blind', function() {
+							$('#dropdown').remove();
+							$('tr').removeClass('mouseOver');
+						});
+						// if another file is choose
+						if (file != $('#dropdown').data('file')) {
+							Wiki.createWikiDropdown(filename,file,dir);
+						}
+					} else {
+						Wiki.createWikiDropdown(filename,file,dir);
+						//Wiki.mediapopup(filename);
+					}
+					
+					
+					
+				}
+			);
+			FileActions.register(
+				'dir'
+				, t('dokuwiki', 'Wiki')
+				, OC.PERMISSION_READ
+				, function() {
+					// Specify icon for wiki menu entry
+					return OC.imagePath('core','actions/history');
+				}
+				,function(filename){
+					// Action to perform when clicked
+					if (scanFiles.scanning){return;}//workaround to prevent additional http request block scanning feedback
+					var parent = $('#dir').val();
+					var dir = parent+'/'+filename;
+					if (($('#dropdown').length > 0) && $('#dropdown').hasClass('drop-wiki') ) {
+						$('#dropdown').hide('blind', function() {
+							$('#dropdown').remove();
+							$('tr').removeClass('mouseOver');
+						});
+						// if another file is choose
+						if (dir != $('#dropdown').data('file')) {
+							Wiki.createWikiDropdown(filename,'',dir);
+						}
+					} else {
+						Wiki.createWikiDropdown(filename,'',dir);
+						//Wiki.mediapopup(filename);
+					}
+				}
+			);
+			// Overwrite Deleteaction from files-app
+			FileActions.register('file', 'Delete',
+				OC.PERMISSION_DELETE,
+				function () {
+					return OC.imagePath('core', 'actions/delete');
+				}, 
+				function (filename) {
+					var pat = /.* \(\d\)$/g;
+					if(!pat.test(filename)){
+						OC.Notification.show(t('dokuwiki', 'The file is opened in the Mediamanager. If you have sufficient rights, you can delete them or restore an older version.'));
+						var dir = $('#dir').val();
+						dir = dir.substring(Wiki.wiki.length+1);
+						var file = dir+'/'+filename;
+						var wikiid = file.replace( /\//g, ':' ).replace( /%2F/g, ':' );
+						var mmurl = Wiki.dokuwikiurl + '/doku.php' + '?ns=' + encodeURIComponent(dir).replace( /\//g, ':' ).replace( /%2F/g, ':' )+'&image='+ wikiid + '&do=media';
+						Wiki.gotoPage(mmurl);
+					}else{// From  apps/files/js/files.js
+						if (Files.cancelUpload(filename)) {
+							if (filename.substr) {
+								filename = [filename];
+							}
+							$.each(filename, function (index, file) {
+								var filename = $('tr').filterAttr('data-file', file);
+								filename.hide();
+								filename.find('input[type="checkbox"]').removeAttr('checked');
+								filename.removeClass('selected');
+							});
+							procesSelection();
+						} else {
+							FileList.do_delete(filename);
+						}
+						$('.tipsy').remove();
+					}
+				}
+			);
+			FileActions.register('dir', 'Delete',
+				OC.PERMISSION_DELETE,
+				function () {
+					return OC.imagePath('core', 'actions/delete');
+				}, 
+				function (dir) {
+					//From FileList.do_delete, only delete empty folders.
+					if (FileList.lastAction) {
+						FileList.lastAction();
+					}
+					$.post(OC.filePath('dokuwiki', 'ajax', 'delete.php'),
+							{dir:$('#dir').val()+'/'+dir},
+							function(result){
+								if (result.status == 'success') {
+									var files = $('tr').filterAttr('data-file',dir);
+									files.remove();
+									files.find('input[type="checkbox"]').removeAttr('checked');
+									files.removeClass('selected');
+								} else {
+									OC.dialogs.alert(t('dokuwiki', 'The folder can be deleted only if all files inside and subfolders have been deleted.'), t('dokuwiki', 'Delete folder'));
+								}
+					});
+					
+				}
+			);
+			FileActions.register('all', 'Rename',
+				OC.PERMISSION_UPDATE,
+				function () { 
+					return OC.imagePath('core', 'actions/rename');
+				},
+				
+				function (filename) {
+					Wiki.rename(filename);
+				}
+			);
+		}
+	}
+	// overwrite Files.isFileNameValid
+	$(window).load(function(){
+		Files.isFileNameValid = function(name){return Wiki.isFileNameValid(name)};
+		FileList.checkName = function(oldName, newName, isNewFile){return Wiki.checkName(oldName, newName, isNewFile)};
+	});
+});
+
+
+
+$(this).click(
+	function(event) {
+	if ($('#dropdown').has(event.target).length === 0 && $('#dropdown').hasClass('drop-wiki')) {
+		$('#dropdown').hide('blind', function() {
+			$('#dropdown').remove();
+			$('tr').removeClass('mouseOver');
+		});
+	}
+
+
+	}
+);
+
+
+
+
+// Original stuff from files_versions (versions.js)  (changed files_versions to DokuWiki)
+
+
+function goToVersionPage(url){
+	window.location.assign(url);
+}
+
+function createVersionsDropdown(filename, files) {
+
+	var historyUrl = OC.linkTo('dokuwiki', 'history.php') + '?path='+encodeURIComponent( $( '#dir' ).val() ).replace( /%2F/g, '/' )+'/'+encodeURIComponent( filename );
+
+	var html = '<div id="dropdown" class="drop drop-versions" data-file="'+escapeHTML(files)+'">';
+	html += '<div id="private">';
+	html += '<select data-placeholder="Saved versions" id="found_versions" class="chzen-select" style="width:16em;">';
+	html += '<option value=""></option>';
+	html += '</select>';
+	html += '</div>';
+	html += '<input type="button" value="All versions..." name="makelink" id="makelink" />';
+	html += '<input id="link" style="display:none; width:90%;" />';
+
+	if (filename) {
+		$('tr').filterAttr('data-file',filename).addClass('mouseOver');
+		$(html).appendTo($('tr').filterAttr('data-file',filename).find('td.filename'));
+	} else {
+		$(html).appendTo($('thead .share'));
+	}
+
+	$("#makelink").click(function() {
+		goToVersionPage(historyUrl);
+	});
+
+	$.ajax({
+		type: 'GET',
+		url: OC.filePath('dokuwiki', 'ajax', 'getVersions.php'),
+		dataType: 'json',
+		data: { source: files },
+		async: false,
+		success: function( versions ) {
+
+			if (versions) {
+				$.each( versions, function(index, row ) {
+					addVersion( row );
+				});
+			} else {
+				$('#found_versions').hide();
+				$('#makelink').hide();
+				$('<div style="text-align:center;">No other versions available</div>').appendTo('#dropdown');
+			}
+			$('#found_versions').change(function(){
+				var revision=parseInt($(this).val());
+				revertFile(files,revision);
+			});
+		}
+	});
+
+	function revertFile(file, revision) {
+
+		$.ajax({
+			type: 'GET',
+			url: OC.linkTo('dokuwiki', 'ajax/rollbackVersion.php'),
+			dataType: 'json',
+			data: {file: file, revision: revision},
+			async: false,
+			success: function(response) {
+				if (response.status=='error') {
+					OC.dialogs.alert('Failed to revert '+file+' to revision '+formatDate(revision*1000)+'.','Failed to revert');
+				} else {
+					$('#dropdown').hide('blind', function() {
+						$('#dropdown').remove();
+						$('tr').removeClass('mouseOver');
+						// TODO also update the modified time in the web ui
+					});
+				}
+			}
+		});
+
+	}
+
+	function addVersion( revision ) {
+		name=formatDate(revision.version*1000);
+		var version=$('<option/>');
+		version.attr('value',revision.version);
+		version.text(name);
+
+// 		} else {
+// 			var checked = ((permissions > 0) ? 'checked="checked"' : 'style="display:none;"');
+// 			var style = ((permissions == 0) ? 'style="display:none;"' : '');
+// 			var user = '<li data-uid_shared_with="'+uid_shared_with+'">';
+// 			user += '<a href="" class="unshare" style="display:none;"><img class="svg" alt="Unshare" src="'+OC.imagePath('core','actions/delete')+'"/></a>';
+// 			user += uid_shared_with;
+// 			user += '<input type="checkbox" name="permissions" id="'+uid_shared_with+'" class="permissions" '+checked+' />';
+// 			user += '<label for="'+uid_shared_with+'" '+style+'>can edit</label>';
+// 			user += '</li>';
+// 		}
+
+		version.appendTo('#found_versions');
+	}
+
+	$('tr').filterAttr('data-file',filename).addClass('mouseOver');
+	$('#dropdown').show('blind');
+
+
+}
+
+$(this).click(
+	function(event) {
+	if ($('#dropdown').has(event.target).length === 0 && $('#dropdown').hasClass('drop-versions')) {
+		$('#dropdown').hide('blind', function() {
+			$('#dropdown').remove();
+			$('tr').removeClass('mouseOver');
+		});
+	}
+
+
+	}
+);
+
+
+
+
 
 
 

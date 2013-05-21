@@ -27,17 +27,50 @@ class Hooks {
 		$path = $params[\OC\Files\Filesystem::signal_param_path];
 		// Do we've a valid filename (no spaces, etc.)
 		$filename = basename($path);
-		if(cleanID($filename) != $filename){
+		$replaceFile = preg_match('#.* \(\d\)\.?.*$#',$filename);
+		if($replaceFile != 1 && cleanID($filename) != $filename && strncmp($path, '/'.$wiki, strlen('/'.$wiki)) == 0){
 				$params['run'] = false;
 		}else{		
-			if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true') {
-				
+			if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true' && $replaceFile != 1)  {	
 				if($path<>'') {
 					Storage::store($path);
 				}
 			}
 		}
 	}
+	
+	public static function post_write_hook($params) {
+		global $conf;
+		global $wiki;
+		$path = $params[\OC\Files\Filesystem::signal_param_path];
+		// Do we've a valid filename (no spaces, etc.)
+		$filename = basename($path);
+		$dir = dirname($path);
+		$replaceFile = preg_match('#.* \(\d\)\.?.*$#',$filename);
+		if($replaceFile == 1){
+			require_once('dokuwiki/lib/helper.php');
+			if($pos = strrpos($filename, '.')){
+				$name = substr($filename, 0, $pos);
+				$ext = substr($filename, $pos);
+			}else{
+				$name = $filename;
+				$ext = '';
+			}
+			// Find (nr)
+			$pos = strrpos($name, ' ');
+			$oldname = substr($filename, 0, $pos).$ext;
+			$newname = buildNotExistingFileNameWithoutSpaces($dir, $oldname);
+			$newname = \OC\Files\Filesystem::normalizePath($newname);
+			\OC\Files\Filesystem::rename($path, $newname);
+		}else{		
+			if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true') {	
+				if($path<>'') {
+					Storage::store($path);
+				}
+			}
+		}
+}
+	
 	
 	public static function fileCreated($params){
 		$path = $params[\OC\Files\Filesystem::signal_param_path];
@@ -77,11 +110,13 @@ class Hooks {
 		$path = $params[\OC\Files\Filesystem::signal_param_path];
 		//prevent deleting files inside wiki-folder. Always from mediamanager
 		global $wiki;
-		
+		$filename = basename($path);
 		if(strncmp($path, '/'.$wiki, strlen('/'.$wiki)) == 0){
-			$t=\OC\Files\Filesystem::filemtime($path);
-			$n = time()-60;
-			if(\OC\Files\Filesystem::filemtime($path) < $n)$params['run'] = 0;
+			$params['run'] = false;
+			require_once('dokuwiki/lib/helper.php');
+			
+			//if(\OC\Files\Filesystem::filemtime($path) < $n) $params['run'] = 0;
+			if(isEmptyDir($path) || preg_match('#.* \(\d\)\.?.*$#',$filename) == 1) $params['run'] = true;
 			 
 		}
 	}
@@ -100,7 +135,8 @@ class Hooks {
 		$filename = basename($newpath);
 		global $wiki;
 		if($oldpath == $wiki || $oldpath == '/'.$wiki || cleanID($filename) != $filename){
-			$params['run'] = false;
+			
+			 $params['run'] = false;
 		// renaming to a name outside wiki folder means moving
 		}elseif(strncmp($oldpath, $wiki, strlen($wiki)) == 0 && strncmp($newpath, $wiki, strlen($wiki))!=0){
 			$params['run'] = false;
