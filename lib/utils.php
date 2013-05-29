@@ -1,5 +1,5 @@
 <?php
-if(!defined('DOKU_INC')) define('DOKU_INC', OC_Appconfig::getValue('dokuwiki', 'dokuwikibase', '/var/www/dokuwiki').'/');
+if(!defined('DOKU_INC')) define('DOKU_INC', OC_Appconfig::getValue('dokuwiki', 'dokuwikibase', '/var/www/dokuwikitest').'/');
 if(!defined('DOKU_CONF')) define('DOKU_CONF',DOKU_INC.'conf/');
 global $conf;
 global $config_cascade;
@@ -12,6 +12,7 @@ require_once(DOKU_INC.'inc/confutils.php');
 require_once(DOKU_INC.'inc/pageutils.php');
 require_once(DOKU_INC.'inc/utf8.php');
 require_once(DOKU_INC.'inc/io.php');
+require_once(DOKU_INC.'inc/common.php');
 
 
 require_once(DOKU_INC.'inc/changelog.php');

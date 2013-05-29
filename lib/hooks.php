@@ -21,7 +21,7 @@ class Hooks {
 	/**
 	 * listen to write event.
 	 */
-	public static function write_hook($params) {
+	public static function pre_write_hook($params) {
 		global $conf;
 		global $wiki;
 		$path = $params[\OC\Files\Filesystem::signal_param_path];
@@ -39,6 +39,7 @@ class Hooks {
 		}
 	}
 	
+	
 	public static function post_write_hook($params) {
 		global $conf;
 		global $wiki;
@@ -47,6 +48,7 @@ class Hooks {
 		$filename = basename($path);
 		$dir = dirname($path);
 		$replaceFile = preg_match('#.* \(\d\)\.?.*$#',$filename);
+		
 		if($replaceFile == 1){
 			require_once('dokuwiki/lib/helper.php');
 			if($pos = strrpos($filename, '.')){
@@ -64,22 +66,12 @@ class Hooks {
 			\OC\Files\Filesystem::rename($path, $newname);
 		}else{		
 			if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true') {	
-				if($path<>'') {
-					Storage::store($path);
+				if($path<>'' && strncmp($path, '/'.$wiki, strlen('/'.$wiki))==0) {
+					Storage::addMediaMetaEntry('',0,'','', \OCP\User::getUser(),$path,true);
 				}
 			}
-		}
+		}		
 }
-	
-	
-	public static function fileCreated($params){
-		$path = $params[\OC\Files\Filesystem::signal_param_path];
-		if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true') {
-				if($path<>'') {
-					Storage::mediaMeta($path);
-				}
-			}
-	}
 
 
 	/**
@@ -119,6 +111,7 @@ class Hooks {
 			if(isEmptyDir($path) || preg_match('#.* \(\d\)\.?.*$#',$filename) == 1) $params['run'] = true;
 			 
 		}
+	//	file_put_contents("Testen.txt","Pre_Remove: ".$path."\n",FILE_APPEND);
 	}
 
 	/**
@@ -128,7 +121,7 @@ class Hooks {
 	 * This function is connected to the rename signal of OC_Filesystem and adjust the name and location
 	 * of the stored versions along the actual file
 	 */
-	public static function rename_hook($params) {
+	public static function pre_rename_hook($params) {
 		$oldpath = $params[\OC\Files\Filesystem::signal_param_oldpath];
 		$newpath = $params[\OC\Files\Filesystem::signal_param_newpath];
 		// Do we've a valid filename (no spaces, etc.)
@@ -148,6 +141,21 @@ class Hooks {
 
 			}
 		 }
+		// file_put_contents("Testen.txt","rename: ".$oldpath."\n",FILE_APPEND);
+	}
+	
+	
+	public static function post_rename_hook($params) {
+		$oldpath = $params[\OC\Files\Filesystem::signal_param_oldpath];
+		$newpath = $params[\OC\Files\Filesystem::signal_param_newpath];
+		// Do we've a valid filename (no spaces, etc.)
+		$filename = basename($newpath);
+		global $wiki;
+		if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true') {
+			if($oldpath<>'' && $newpath<>'' && strncmp($newpath, '/'.$wiki, strlen('/'.$wiki))==0) {
+				Storage::rename($oldpath,$newpath,true);
+			}
+		}
 	}
 
 	/**

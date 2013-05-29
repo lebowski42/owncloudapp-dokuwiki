@@ -25,25 +25,27 @@ ini_set ('display_errors', 'On');
 OCP\JSON::checkLoggedIn();
 OCP\JSON::callCheck();
 
-$start = microtime(true);
 if(!isset($_GET['id'])){
 	OCP\JSON::error(array("data" => array( "message" => "No FileID given." )));
-}else{	
-	$userurl = OC_Appconfig::getValue('dokuwiki', 'dokuwikiuserurl', 'user:%USER%');
+}else{
 	$url = OC_Appconfig::getValue('dokuwiki', 'dokuwikiurl', 'http://localhost/wax');
-	$query = \OC_DB::prepare('SELECT `user` FROM `*PREFIX*dokuwiki_media_meta` WHERE fileid=? GROUP BY `user` ORDER BY `user`ASC');
+	$fetch = "$url/lib/exe/fetch.php";
+	$query = \OC_DB::prepare('SELECT `timestamp`, `user`, `ip`, `desc`, `mod` FROM `*PREFIX*dokuwiki_media_meta` WHERE fileid=? ORDER BY `timestamp` DESC');
 	$query->execute(array(intval($_GET['id'])));
 	$rows = $query->numRows();
-	$authors = array();
-	for($i = 1; $i <= $rows; $i++){
-		$row = $query->fetchRow();
-		if($row['user'] != ''){
-			$ref = '<a href="'.$url.'/doku.php?id='.str_replace('%USER%',$row['user'],$userurl).'" target="_blank">'.htmlspecialchars($row['user']).'</a>';
-			array_push($authors,$ref);
+	if($rows <= 1)OCP\JSON::error(array("data" => array( "message" => "No versions"))); 
+	else{
+		$row = $query->fetchRow();// Skip current Version
+		$ret = '<ul>';
+		for($i = 2; $i <= $rows; $i++){
+			$row = $query->fetchRow();
+			$date = strftime('%Y/%m/%d %H:%M',$row['timestamp']);
+			if(empty($row['user'])) $row['user'] = $row['ip'];
+			if($row['mod'] != 'm') $ret .= '<li><a title="'.$row['desc'].'" href="'.$fetch.'?media='.$_GET['file'].'&rev='.$row['timestamp'].'" target="_blank"><b>'.htmlspecialchars($date).'</b>'.htmlspecialchars(' ('.$row['user'].')').'</a></li>';
 		}
+		$ret .= '</ul>';
+		OCP\JSON::success(array("data" => array( "message" => $ret)));
 	}
-	if($rows>0) OCP\JSON::success(array("data" => array( "message" => implode(', ', $authors))));
-	else OCP\JSON::error(array("data" => array( "message" => "No authorlist available")));
 }
 
 
@@ -72,6 +74,6 @@ if(!isset($_GET['id'])){
 			OCP\JSON::error(array("data" => array( "message" => "No authorlist available")));
 	}	
 }*/
-file_put_contents("ZeitTesten.txt",'DB: '.(microtime(true)-$start)." Sekunden verbraucht\n",FILE_APPEND); 
+
 
 ?>

@@ -1,13 +1,13 @@
 Wiki={
 	wiki: 'wiki',
-	dokuwikiurl: 'http://localhost/wax',
+	dokuwikiurl: 'http://localhost/dokuwikitest',
 	dokuwikidetail: '/lib/exe/detail.php',
-	dokuwikibase: '/var/www/wax',
+	dokuwikibase: '/var/www/dokuwikitest',
 	dokuwikideaccent: '0',
 	dokuwikisepchar: "_",
 	//From DokuWiki
 	align: "1",
-	link: "2",
+	link: "1",
 	size: "3",
 	forbidden_opts: {},
 	$popup: null,
@@ -112,6 +112,79 @@ Wiki={
 		}
 		return name;
 	},
+	wikiid: function(file){
+			return file.replace( /\//g, ':' ).replace( /%2F/g, ':' );
+	},
+	createDescriptionPopup: function(file){
+		fileid = Wiki.getFileID(file);
+		Wiki.$popup = jQuery(document.createElement('div'))
+			.attr('id', 'desc_popup')
+			.dialog({autoOpen: false, width: 300, modal: true,
+			         draggable: true, title: t('dokuwiki','Description of {file}',{file: file}),
+			         //+ destroy on close
+			         close:  function(event, ui){$(this).dialog('destroy').remove();},resizable: false});
+        // Textfield for description
+        $p = jQuery(document.createElement('p'));
+        $p.css('padding-top','5px');
+        $textarea = jQuery(document.createElement('textarea'))
+                  .attr('name', 'filedesc')
+                  .attr('id', 'filedesc')
+                  .attr('rows', '8')
+                  .attr('maxlength', '256')
+                  .css('overflow','hidden')
+                  .css('width','90%')
+        //$p.html('<textarea name="filedesc" id="filedesc" rows="8" maxlength="256" style="overflow:hidden;width:90%;"></textarea>');
+        
+        $.ajax({
+			type: 'POST',
+			url: OC.filePath('dokuwiki', 'ajax', 'description.php'),
+			data: {fileid: fileid, ret: true},
+			async: true,
+			success: function(result){
+				$textarea.val(result.data.message);
+			}
+		});
+		$p.append($textarea);
+        Wiki.$popup.append($p);
+       
+        
+        // save and close button
+        $insp = jQuery(document.createElement('p'));
+        $insp.css('float','right')
+        //+ Wiki
+        Wiki.$popup.append($insp);
+
+        $savebtn = jQuery(document.createElement('button'))
+                  .attr('id', 'desc_savebtn')
+                  .attr('type', 'button')
+                  .addClass('button')
+                  .append('<img src="'+OC.imagePath('core','actions/add')+'" style="vertical-align:middle"> '+t('dokuwiki', 'Save changes'))
+                  .click(function(){
+					   alert($('#filedesc').val()+" | "+fileid);
+					   $.ajax({
+							type: 'POST',
+							url: OC.filePath('dokuwiki', 'ajax', 'description.php'),
+							data: {fileid: fileid, desc: $('#filedesc').val()},
+							async: true,
+							success: function(result){
+								OC.Notification.show(t('dokuwiki','Update Description for {file}',{file: file}));
+							}
+						});
+						Wiki.$popup.dialog("destroy");
+				   });
+        $insp.append($savebtn);
+        $closebtn = jQuery(document.createElement('button'))
+                  .attr('id', 'desc_closebtn')
+                  .attr('type', 'button')
+                  .addClass('button')
+                  .append('<img src="'+OC.imagePath('core','actions/close')+'" style="vertical-align:middle"> '+t('dokuwiki', 'Close'))
+                  .click(function(){
+					   Wiki.$popup.dialog("destroy");
+				   });
+        $insp.append($closebtn);
+        
+        Wiki.$popup.dialog('open');
+	},
 	
 	createWikiDropdown: function(filename, file, dir){
 		// Check if it is a directory.
@@ -140,13 +213,17 @@ Wiki={
 			html += '<div id="private" style="margin-bottom: 5px;">';
 		html += '<button name="usedin" id="usedin"> <img src="'+OC.imagePath('core','actions/password')+'" style="vertical-align:middle"> '+t('dokuwiki', 'Usage on ...')+'</button>';
 		if(!isDir){
-			html += '<button name="makelink" id="authors"> <img src="'+OC.imagePath('core','actions/shared')+'" style="vertical-align:middle"> '+t('dokuwiki', 'Authors')+'</button>';
+			html += '<button name="authors" id="authors"> <img src="'+OC.imagePath('core','actions/shared')+'" style="vertical-align:middle"> '+t('dokuwiki', 'Authors')+'</button>';
 			//html += '<input type="button" value="Autoren" name="makelink" id="authors"  />';
 		}
 		html += '</div>';
 		html += '<div id="private" style="margin-bottom: 5px;">';
 		html += '<button name="makelink" id="linkconfig"> <img src="'+OC.imagePath('core','filetypes/model.png')+'" style="vertical-align:middle"> '+t('dokuwiki', 'Create wikilink')+'</button>';
 		//html += '<input type="button" value="Linkbauen" name="makelink" id="linkconfig"  />';
+		if(!isDir){
+			html += '<button name="versions" id="versions"> <img src="'+OC.imagePath('core','actions/clock')+'" style="vertical-align:middle"> '+t('dokuwiki', 'Versions')+'</button>';
+			//html += '<input type="button" value="Autoren" name="makelink" id="authors"  />';
+		}
 		html += '<input id="link" style="display:none; width:90%;" />';
 		html += '</div>';
 	
@@ -177,11 +254,24 @@ Wiki={
 			if(isDir) Wiki.dirpopup(file);
 			else Wiki.mediapopup(file);
 		});
+		$("#versions").click(function() {
+			$("#dropdown").hide();
+			Wiki.versionspopup(file);
+		});
 		
 	},
-	
+	versionspopup: function(file){
+		$.ajax({url: OC.filePath('dokuwiki', 'ajax', 'wikiVersions.php'), async: false, data: {file: Wiki.wikiid(file), id: Wiki.getFileID(file)/*encodeURIComponent(file).replace( /%2F/g, ':' )*/}, success: function(result) {
+			authorpopup = jQuery(document.createElement('div'))
+						.attr('id', 'wikiversions')
+						.dialog({ width: 280, height: 200,modal: false,
+						draggable: true, title: t('dokuwiki', 'Versions'),
+						resizable: true});	
+			authorpopup.append('<p><b>'+t('dokuwiki','File')+': '+file+'</b></p><hr/><div>'+t('dokuwiki',result.data.message)+'</div>');
+			}});
+	},	
 	authorpopup: function(file){
-		$.ajax({url: OC.filePath('dokuwiki', 'ajax', 'authors.php'), async: false, data: {file: encodeURIComponent(file).replace( /%2F/g, ':' ) }, success: function(result) {
+		$.ajax({url: OC.filePath('dokuwiki', 'ajax', 'authors.php'), async: false, data: {id: Wiki.getFileID(file)/*encodeURIComponent(file).replace( /%2F/g, ':' )*/}, success: function(result) {
 			authorpopup = jQuery(document.createElement('div'))
 						.attr('id', 'fileauthors')
 						.dialog({ width: 280, height: 200,modal: false,
@@ -207,6 +297,9 @@ Wiki={
 		//window.location.assign(url);
 	},
 	
+	getFileID: function(filename){
+		return $('tr').filterAttr('data-file', filename.replace( /.*\//,'')).attr('data-id');
+	},
 	
 	/* This method is original from DokuWiks /lib/scripts/media.js function initpopup. Written by
 	 * Andreas Gohr <andi@splitbrain.org> andPierre Spring <pierre.spring@caillou.ch>
@@ -215,6 +308,7 @@ Wiki={
 	*/
 	mediapopup: function(filename){
 		var opts, $insp, $insbtn;
+		fileid = Wiki.getFileID(filename);
 		//+ Wiki
 		Wiki.$popup = jQuery(document.createElement('div'))
 			.attr('id', 'media__popup_content')
@@ -261,9 +355,9 @@ Wiki={
 
                 $btn.append($img);
                 //+ default checked buttons
-                if(opt.id == 'link' && i == 1) $btn.css('border-style','inset');
+                if(opt.id == 'link' && i == 0) $btn.css('border-style','inset');
                 if(opt.id == 'align' && i == 0) $btn.css('border-style','inset');
-                if(opt.id == 'size' && i == 2) $btn.css('border-style','inset');
+                if(opt.id == 'size' && i == 3) $btn.css('border-style','inset');
                 $p.append($btn);
             });
 			//+ Wiki
@@ -277,6 +371,12 @@ Wiki={
         //$p.html('<label>Description: </label>' +
 	      //'<input type="text" name="desc" id="desc" value="" >');
         Wiki.$popup.append($p);
+        if (Wiki.img){
+			$p = jQuery(document.createElement('p'));
+			$p.css('padding-top','5px');
+			$p.html('<input type="checkbox" name="imagebox" id="imagebox" value="imagebox"> '+t('dokuwiki','Frame and caption?')+'<br>');
+			Wiki.$popup.append($p);
+		}
         
         // insert button
         $insp = jQuery(document.createElement('p'));
@@ -289,7 +389,7 @@ Wiki={
                   .addClass('button')
                   .val(t('dokuwiki', 'Create wikilink'))
                   .click(function(){
-						Wiki.insert(filename, $('#desc'));
+						Wiki.insert(filename,fileid,$('#desc'),$('#imagebox'),true);
 				   });
         $insp.append($insbtn);
         
@@ -298,6 +398,7 @@ Wiki={
 	
 	
 	dirpopup: function(filename){
+		fileid = Wiki.getFileID(filename);
 		var opts, $insp, $insbtn;
 		//+ Wiki
 		Wiki.$popup = jQuery(document.createElement('div'))
@@ -334,7 +435,7 @@ Wiki={
                   .addClass('button')
                   .val(t('dokuwiki', 'Create wikilink'))
                   .click(function(){
-						Wiki.insert(filename, $('#desc'), $('#dirdirect'));
+						Wiki.insert(filename,fileid, $('#desc'), $('#dirdirect'),false);
 				   });
         $insp.append($insbtn);
         
@@ -347,14 +448,14 @@ Wiki={
 	 * 
 	 * Modifications marked with //+
 	*/
-	insert: function (id,textfield, checkbox) {
+	insert: function (id,fielid,textfield, checkbox,file) {
         var opts, alignleft, alignright, edid, s;
 
         // set syntax options
         //+ Wiki
         Wiki.$popup.dialog( "destroy" );
         // We have a directory
-		if(typeof checkbox == "undefined"){
+		if(file){
 			opts = '';
 			alignleft = '';
 			alignright = '';
@@ -414,22 +515,25 @@ Wiki={
         opener.insertTags(edid ? edid[1] : 'wiki__text',
                           '{{'+alignleft+id+opts+alignright+'|','}}','');*/
         //+ getFileID
-        $.ajax({
+        if(fileid =='' || fileid <=0){
+			$.ajax({
 					type: 'POST',
 					url: OC.filePath('dokuwiki', 'ajax', 'fileid.php'),
 					data: {file: Wiki.wiki +'/'+id},
 					async: false,
 					success: function(result){
 						if (result.status == 'success') {
-							opts += (opts.length)?'&':'?';
-							opts += 'fileid='+result.data.fileid;
+							fileid= result.data.fileid;
 						}
 					}
 			});
-                          
+        }
+        opts += (opts.length)?'&':'?';
+		opts += 'fileid='+fileid;
         //+ add link copy
         id = id.replace( /\//g, ':' ).replace( /%2F/g, ':' );
 		var link = '{{'+alignleft+id+opts+alignright+'|'+desc+'}}';
+		if(file && typeof checkbox.attr('checked') != 'undefined') link = '['+link+']';
 		linkpopup = jQuery(document.createElement('div'))
 			.attr('id', 'media__popup_link')
 			.dialog({autoOpen: false, modal: true, width: 600,
@@ -681,20 +785,23 @@ Wiki={
 	checkName:function(modName, newName, isNewFile) {
 		if (isNewFile || $('tr').filterAttr('data-file', newName).length > 0) {
 			var html;
-			if(modName == Wiki.sanitizeFilename(newName)){
-					html = t('files', '{new_name} Here we are', {new_name: escapeHTML(newName)});	
+			//renamedFilename = Wiki.sanitizeFilename(newName);
+			if( Wiki.sanitizeFilename(newName)!=newName){
+					OC.dialogs.alert(t('dokuwiki', '{new_name} is not a valid filename. Please rename it and try again.', {new_name: escapeHTML(newName)}), t('dokuwiki','Error uploading file'));
+					//html = t('dokuwiki', '{new_name} is not a valid filename. Please rename it and try again.', {new_name: escapeHTML(newName)});	
 			}else{
 				if(isNewFile){
-					html = t('files', '{new_name} already 1exists', {new_name: escapeHTML(newName)})+'<span class="replace">'+t('files', 'replace')+'</span><span class="suggest">'+t('files', 'suggest name')+'</span>&nbsp;<span class="cancel">'+t('files', 'cancel')+'</span>';
+					html = t('files', '{new_name} already exists', {new_name: escapeHTML(newName)})+'<span class="replace">'+t('files', 'replace')+'</span><span class="suggest">'+t('files', 'suggest name')+'</span>&nbsp;<span class="cancel">'+t('files', 'cancel')+'</span>';
 				}else{
-					html = t('files', '{new_name} already 2exists', {new_name: escapeHTML(newName)})+'<span class="replace">'+t('files', 'replace')+'</span><span class="cancel">'+t('files', 'cancel')+'</span>';
+					html = t('files', '{new_name} already exists', {new_name: escapeHTML(newName)})+'<span class="replace">'+t('files', 'replace')+'</span><span class="cancel">'+t('files', 'cancel')+'</span>';
 				}
-			}
+			
 			html = $('<span>' + html + '</span>');
 			html.attr('data-oldName', modName);
 			html.attr('data-newName', newName);
 			html.attr('data-isNewFile', isNewFile);
             OC.Notification.showHtml(html);
+			}
 			return true;
 		} else {
 			return false;
@@ -767,6 +874,32 @@ $(document).ready(function(){
 		}else{
 			FileActions.register(
 				'file'
+				, t('dokuwiki', 'Description')
+				, OC.PERMISSION_READ
+				, function() {
+					// Specify icon for wiki menu entry
+					return OC.imagePath('core','actions/info');
+				}
+				,function(filename){
+					// Action to perform when clicked
+					if (scanFiles.scanning){return;}//workaround to prevent additional http request block scanning feedback
+					if (($('#dropdown').length > 0) && $('#dropdown').hasClass('drop-desc') ) {
+						$('#dropdown').hide('blind', function() {
+							$('#dropdown').remove();
+							$('tr').removeClass('mouseOver');
+						});
+						// if another file is choose
+						if (file != $('#dropdown').data('file')) {
+							Wiki.createDescriptionPopup(filename);
+						}
+					} else {
+						Wiki.createDescriptionPopup(filename);
+						//Wiki.mediapopup(filename);
+					}	
+				}
+			);
+			FileActions.register(
+				'file'
 				, t('dokuwiki', 'Wiki')
 				, OC.PERMISSION_READ
 				, function() {
@@ -831,7 +964,7 @@ $(document).ready(function(){
 					return OC.imagePath('core', 'actions/delete');
 				}, 
 				function (filename) {
-					var pat = /.* \(\d\)$/g;
+					var pat = /.* \(\d\)\..*$/g;
 					if(!pat.test(filename)){
 						OC.Notification.show(t('dokuwiki', 'The file is opened in the Mediamanager. If you have sufficient rights, you can delete them or restore an older version.'));
 						var dir = $('#dir').val();
@@ -899,7 +1032,7 @@ $(document).ready(function(){
 	// overwrite Files.isFileNameValid
 	$(window).load(function(){
 		Files.isFileNameValid = function(name){return Wiki.isFileNameValid(name)};
-		FileList.checkName = function(oldName, newName, isNewFile){return Wiki.checkName(oldName, newName, isNewFile)};
+		FileList.checkName = function(oldName, newName, isNewFile){return Wiki.checkName(oldName, newName, isNewFile)};		
 	});
 });
 
@@ -907,16 +1040,15 @@ $(document).ready(function(){
 
 $(this).click(
 	function(event) {
-	if ($('#dropdown').has(event.target).length === 0 && $('#dropdown').hasClass('drop-wiki')) {
-		$('#dropdown').hide('blind', function() {
-			$('#dropdown').remove();
-			$('tr').removeClass('mouseOver');
-		});
-	}
-
-
-	}
+		if ($('#dropdown').has(event.target).length === 0 && $('#dropdown').hasClass('drop-wiki')) {
+			$('#dropdown').hide('blind', function() {
+				$('#dropdown').remove();
+				$('tr').removeClass('mouseOver');
+			});
+		}
+}
 );
+
 
 
 

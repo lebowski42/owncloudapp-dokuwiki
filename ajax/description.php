@@ -22,15 +22,22 @@
 
 OCP\JSON::checkLoggedIn();
 OCP\JSON::callCheck();
-
-if(!isset($_POST['file'])){
-	OCP\JSON::error(array("data" => array( "fileid" => '-1' )));
-	
-}else{	
-	$uid = \OCP\User::getUser();
-	\OC\Files\Filesystem::init($uid,'/'.$uid .'/files');
-	$data = \OC\Files\Filesystem::getFileInfo($_POST['file']);
-	OCP\JSON::success(array("data" => array("fileid" => $data['fileid'])));
+if(!isset($_POST['fileid'])){
+		OCP\JSON::error(array("data" => array( "message" => 'No fileid given' )));
+}else{
+	if(!isset($_POST['ret'])){
+		if(!isset($_POST['desc'])){	
+			OCP\JSON::error(array("data" => array( "message" => 'No description given.' )));
+		}else{
+			$query = \OC_DB::prepare('UPDATE `*PREFIX*dokuwiki_media_meta` SET `desc`=? WHERE fileid=? ORDER BY `timestamp` DESC LIMIT 1');
+			$query->execute(array(htmlspecialchars($_POST['desc']),$_POST['fileid']));
+			OCP\JSON::success(array("data" => array( "message" => 'Update Description for {file}' )));
+		}
+	}else{
+		$query = \OC_DB::prepare('SELECT `desc` FROM `*PREFIX*dokuwiki_media_meta` WHERE fileid=? ORDER BY `timestamp` DESC LIMIT 1');
+		$query->execute(array($_POST['fileid']));
+		OCP\JSON::success(array("data" => array( "message" =>$query->fetchOne())));
+	}
 }
 
 ?>

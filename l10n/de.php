@@ -56,4 +56,12 @@
 "Media not in use" => "Wird noch auf keiner Seite verwendet",
 "Word separator in filenames" => "Worttrenner in Dateinamen",
 "This have to be exactly the same value used for the config key \"sepchar\" in your DokuWiki installation." => "Dies muss genau derselbe Wert sein, der auch für den Konfigurationsschlüssel \"sepchar\" in der DokuWiki-Installation verwendet wird.",
+"{new_name} is not a valid filename. Please rename it and try again." => "{new_name} ist kein erlaubter Dateiname. Bitte umbennenen und erneut probieren.",
+"Error uploading file" => "Fehler beim Hochladen der Datei (<i>sadasd</i>)",
+"Frame and caption?" => "Rahmen und Bildunterschrift?",
+"Description" => "Beschreibung",
+"Description of {file}" => "Beschreibung von {file}",
+"Update Description for {file}" => "Beschreibung für {file} geändert",
+"Save changes" => "Speichern",
+"Close" => "Schließen"
 );

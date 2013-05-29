@@ -8,12 +8,9 @@
  <charset>utf8</charset>
 
  <table>
-
   <name>*dbprefix*files_versions</name>
-
   <declaration>
-	
-	   <field>
+   <field>
 		<name>user</name>
 		<type>text</type>
 		<default></default>
@@ -29,16 +26,12 @@
 	   </field>
   
    
-  </declaration>
-
+ </declaration>
  </table>
  
  <table>
-
   <name>*dbprefix*dokuwiki_media_use</name>
-
   <declaration>
-	
 	   <field>
 		<name>fileid</name>
 		<type>integer</type>
@@ -80,7 +73,66 @@
 			</field>
 	</index>
   </declaration>
-
+ </table>
+ 
+ <table>
+  <name>*dbprefix*dokuwiki_media_meta</name>
+  <declaration>
+	   <field>
+		<name>fileid</name>
+		<type>integer</type>
+		<default></default>
+		<notnull>true</notnull>
+		<length>4</length>
+	   </field>
+	   <field>
+		<name>timestamp</name>
+		<type>integer</type>
+		<default></default>
+		<notnull>true</notnull>
+		<length>4</length>
+	   </field>
+	   <field>
+		<name>ip</name>
+		<type>text</type>
+		<default></default>
+		<notnull>false</notnull>
+		<length>32</length>
+	   </field>
+	    <field>
+		<name>mod</name>
+		<type>text</type>
+		<default></default>
+		<notnull>true</notnull>
+		<length>2</length>
+	   </field>
+	   <field>
+		<name>user</name>
+		<type>text</type>
+		<default></default>
+		<notnull>false</notnull>
+		<length>64</length>
+	   </field>
+	   <field>
+		<name>desc</name>
+		<type>text</type>
+		<default></default>
+		<notnull>false</notnull>
+		<length>512</length>
+	   </field>
+	<index>
+		<name>dokuwiki_meta_index</name>
+		<unique>true</unique>
+			<field>
+				<name>fileid</name>
+				<sorting>ascending</sorting>
+			</field>
+			<field>
+				<name>timestamp</name>
+				<sorting>ascending</sorting>
+			</field>
+	</index>
+  </declaration>
  </table>
 
 </database>

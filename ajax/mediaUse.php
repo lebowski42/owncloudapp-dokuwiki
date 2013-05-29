@@ -19,6 +19,9 @@
 * License along with this library.  If not, see <http://www.gnu.org/licenses/>.
 * 
 */
+OCP\JSON::checkLoggedIn();
+OCP\JSON::callCheck();
+
 if(!isset($_GET['file'])){
 	OCP\JSON::error(array("data" => array( "message" => "No file given")));	
 }else{	
