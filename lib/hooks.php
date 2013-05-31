@@ -1,9 +1,16 @@
 <?php
 /**
- * Copyright (c) 2012 Sam Tuke <samtuke@owncloud.com>
+ * Copyright (c) 2012 Sam Tuke <samtuke@owncloud.com> and Martin Schulte 
+ * <lebowski[at]corvus[dot]uberspace[dot]de>
  * This file is licensed under the Affero General Public License version 3 or
  * later.
  * See the COPYING-README file.
+ */
+
+/* 
+ * This file is based on the file hooks.php from ownClouds version app 
+ * (apps/files_versions/lib/hook.php), which was written by Sam Tuke 
+ * <samtuke@owncloud.com>. It's modified for the needs of the dokuwiki-app
  */
 
 /**
@@ -22,16 +29,14 @@ class Hooks {
 	 * listen to write event.
 	 */
 	public static function pre_write_hook($params) {
-		global $conf;
-		global $wiki;
 		$path = $params[\OC\Files\Filesystem::signal_param_path];
 		// Do we've a valid filename (no spaces, etc.)
 		$filename = basename($path);
-		$replaceFile = preg_match('#.* \(\d\)\.?.*$#',$filename);
-		if($replaceFile != 1 && cleanID($filename) != $filename && strncmp($path, '/'.$wiki, strlen('/'.$wiki)) == 0){
+		$specialFile = allowedFilenameIfNotCleandID($filename);
+		if(!$specialFile  && cleanID($filename) != $filename && inWiki($path)){
 				$params['run'] = false;
 		}else{		
-			if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true' && $replaceFile != 1)  {	
+			if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true' && !$specialFile)  {	
 				if($path<>'') {
 					Storage::store($path);
 				}
@@ -47,9 +52,9 @@ class Hooks {
 		// Do we've a valid filename (no spaces, etc.)
 		$filename = basename($path);
 		$dir = dirname($path);
-		$replaceFile = preg_match('#.* \(\d\)\.?.*$#',$filename);
+		$specialFile = allowedFilenameIfNotCleandID($filename);
 		
-		if($replaceFile == 1){
+		if($specialFile){
 			require_once('dokuwiki/lib/helper.php');
 			if($pos = strrpos($filename, '.')){
 				$name = substr($filename, 0, $pos);
@@ -66,8 +71,9 @@ class Hooks {
 			\OC\Files\Filesystem::rename($path, $newname);
 		}else{		
 			if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true') {	
-				if($path<>'' && strncmp($path, '/'.$wiki, strlen('/'.$wiki))==0) {
-					Storage::addMediaMetaEntry('',0,'','', \OCP\User::getUser(),$path,true);
+				if($path<>'' && inWiki($path)) {
+					Storage::addMediaMetaEntry(0,'','', \OCP\User::getUser(),$path);
+					//Storage::addMediaMetaEntryOLD('',0,'','', \OCP\User::getUser(),$path,true);
 				}
 			}
 		}		
@@ -103,15 +109,11 @@ class Hooks {
 		//prevent deleting files inside wiki-folder. Always from mediamanager
 		global $wiki;
 		$filename = basename($path);
-		if(strncmp($path, '/'.$wiki, strlen('/'.$wiki)) == 0){
+		if(inWiki($path)){
 			$params['run'] = false;
 			require_once('dokuwiki/lib/helper.php');
-			
-			//if(\OC\Files\Filesystem::filemtime($path) < $n) $params['run'] = 0;
-			if(isEmptyDir($path) || preg_match('#.* \(\d\)\.?.*$#',$filename) == 1) $params['run'] = true;
-			 
+			if(isEmptyDir($path) || fileAllowedToRemove($filename)) $params['run'] = true;
 		}
-	//	file_put_contents("Testen.txt","Pre_Remove: ".$path."\n",FILE_APPEND);
 	}
 
 	/**
@@ -131,7 +133,7 @@ class Hooks {
 			
 			 $params['run'] = false;
 		// renaming to a name outside wiki folder means moving
-		}elseif(strncmp($oldpath, $wiki, strlen($wiki)) == 0 && strncmp($newpath, $wiki, strlen($wiki))!=0){
+		}elseif(inWiki($oldpath) && !inWiki($newpath)){
 			$params['run'] = false;
 		}else{	
 			if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true') {
@@ -141,7 +143,6 @@ class Hooks {
 
 			}
 		 }
-		// file_put_contents("Testen.txt","rename: ".$oldpath."\n",FILE_APPEND);
 	}
 	
 	
@@ -152,7 +153,7 @@ class Hooks {
 		$filename = basename($newpath);
 		global $wiki;
 		if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true') {
-			if($oldpath<>'' && $newpath<>'' && strncmp($newpath, '/'.$wiki, strlen('/'.$wiki))==0) {
+			if($oldpath<>'' && $newpath<>'' && inWiki($newpath)) {
 				Storage::rename($oldpath,$newpath,true);
 			}
 		}

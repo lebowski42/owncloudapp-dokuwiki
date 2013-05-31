@@ -1,6 +1,26 @@
+/**
+*  This file is part of the DokuWiki-app for owncloud.
+*
+* @author Martin Schulte
+* @copyright 2013 Martin Schulte <lebowski[at]corvus[dot]uberspace[dot]de>
+*
+* This library is free software; you can redistribute it and/or
+* modify it under the terms of the GNU AFFERO GENERAL PUBLIC LICENSE
+* License as published by the Free Software Foundation; either
+* version 3 of the License, or any later version.
+*
+* This library is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU AFFERO GENERAL PUBLIC LICENSE for more details.
+*
+* You should have received a copy of the GNU Affero General Public
+* License along with this library.  If not, see <http://www.gnu.org/licenses/>.
+* 
+*/
 Wiki={
 	wiki: 'wiki',
-	dokuwikiurl: 'http://localhost/dokuwikitest',
+	dokuwikiurl: 'http://localhost/dokuwiki',
 	dokuwikidetail: '/lib/exe/detail.php',
 	dokuwikibase: '/var/www/dokuwikitest',
 	dokuwikideaccent: '0',
@@ -18,7 +38,7 @@ Wiki={
 	// original from apps/files/js/files.js
 	isFileNameValid:function (name) {
 		//save ajax calls
-		if(name in Wiki.filenamecache && Wiki.filenamecache[name] != undefined) {alert('fcache: '+Wiki.filenamecache[name]);return Wiki.filenamecache[name];}
+		if(name in Wiki.filenamecache && Wiki.filenamecache[name] != undefined)  return Wiki.filenamecache[name];
 		if(name === '.') {
 			OC.Notification.show(t('files', '\'.\' is an invalid file name.'));
 			return false;
@@ -31,9 +51,6 @@ Wiki={
 			OC.Notification.show(t('dokuwiki', 'The file or folder name must be lowercase'));
 			return false;
 		}
-
-
-
 		// check for invalid characters
 		var invalid_characters = ['\\', '/', '<', '>', ':', '"', '|', '?', '*',')','(',']','[','{','}','&','%','$','§','+','!',' '];
 		for (var i = 0; i < invalid_characters.length; i++) {
@@ -62,10 +79,8 @@ Wiki={
 		}
 		if(success)	OC.Notification.hide();
 		Wiki.filenamecache[name] = success;
-		return success;
-		
-	},
-	
+		return success;	
+	},	
 	sanitizeFilename: function(name){
 		oldname = name;
 		//save ajax calls
@@ -87,7 +102,6 @@ Wiki={
 		Wiki.cleanfilenames[oldname] = name;
 		return name;
 	},
-	
 	getUniqueName: function(name){
 		if($('tr').filterAttr('data-file',name).length>0){
 			var parts=name.split('.');
@@ -117,6 +131,7 @@ Wiki={
 	},
 	createDescriptionPopup: function(file){
 		fileid = Wiki.getFileID(file);
+		file = file.substring(Wiki.wiki.length+1);
 		Wiki.$popup = jQuery(document.createElement('div'))
 			.attr('id', 'desc_popup')
 			.dialog({autoOpen: false, width: 300, modal: true,
@@ -134,11 +149,10 @@ Wiki={
                   .css('overflow','hidden')
                   .css('width','90%')
         //$p.html('<textarea name="filedesc" id="filedesc" rows="8" maxlength="256" style="overflow:hidden;width:90%;"></textarea>');
-        
         $.ajax({
 			type: 'POST',
 			url: OC.filePath('dokuwiki', 'ajax', 'description.php'),
-			data: {fileid: fileid, ret: true},
+			data: {/*fileid: fileid*/file: encodeURIComponent(file).replace( /%2F/g, ':' ), ret: true},
 			async: true,
 			success: function(result){
 				$textarea.val(result.data.message);
@@ -160,11 +174,10 @@ Wiki={
                   .addClass('button')
                   .append('<img src="'+OC.imagePath('core','actions/add')+'" style="vertical-align:middle"> '+t('dokuwiki', 'Save changes'))
                   .click(function(){
-					   alert($('#filedesc').val()+" | "+fileid);
 					   $.ajax({
 							type: 'POST',
 							url: OC.filePath('dokuwiki', 'ajax', 'description.php'),
-							data: {fileid: fileid, desc: $('#filedesc').val()},
+							data: {/*fileid: fileid*/file: encodeURIComponent(file).replace( /%2F/g, ':' ), desc: $('#filedesc').val()},
 							async: true,
 							success: function(result){
 								OC.Notification.show(t('dokuwiki','Update Description for {file}',{file: file}));
@@ -261,7 +274,7 @@ Wiki={
 		
 	},
 	versionspopup: function(file){
-		$.ajax({url: OC.filePath('dokuwiki', 'ajax', 'wikiVersions.php'), async: false, data: {file: Wiki.wikiid(file), id: Wiki.getFileID(file)/*encodeURIComponent(file).replace( /%2F/g, ':' )*/}, success: function(result) {
+		$.ajax({url: OC.filePath('dokuwiki', 'ajax', 'wikiVersions.php'), async: false, data: {file: file, id: Wiki.getFileID(file)/*encodeURIComponent(file).replace( /%2F/g, ':' )*/}, success: function(result) {
 			authorpopup = jQuery(document.createElement('div'))
 						.attr('id', 'wikiversions')
 						.dialog({ width: 280, height: 200,modal: false,
@@ -271,7 +284,7 @@ Wiki={
 			}});
 	},	
 	authorpopup: function(file){
-		$.ajax({url: OC.filePath('dokuwiki', 'ajax', 'authors.php'), async: false, data: {id: Wiki.getFileID(file)/*encodeURIComponent(file).replace( /%2F/g, ':' )*/}, success: function(result) {
+		$.ajax({url: OC.filePath('dokuwiki', 'ajax', 'authors.php'), async: false, data: {id: /*Wiki.getFileID(file)*/encodeURIComponent(file).replace( /%2F/g, ':' )}, success: function(result) {
 			authorpopup = jQuery(document.createElement('div'))
 						.attr('id', 'fileauthors')
 						.dialog({ width: 280, height: 200,modal: false,
@@ -806,15 +819,28 @@ Wiki={
 		} else {
 			return false;
 		}
+	},
+	getAppConfig: function(){
+		$.ajax({
+			url: OC.filePath('dokuwiki', 'ajax', 'appConfig.php'),
+			async: false,
+			success: function(config) {
+				if(config.status == 'success') {
+					if('dokuwikibase' in config.data) Wiki.dokuwikibase = config.data['dokuwikibase'];
+					if('dokuwikiurl' in config.data) Wiki.dokuwikiurl = config.data['dokuwikiurl'];
+					if('dokuwikideaccent' in config.data) Wiki.dokuwikideaccent = config.data['dokuwikideaccent'];
+					if('dokuwikisepchar' in config.data) Wiki.dokuwikisepchar = config.data['dokuwikisepchar'];
+				}
+			}
+		});
 	}
-	
-	
 }
 // Set configvalues
-OC.AppConfig.getCall('getValue',{app:'dokuwiki',key:'dokuwikibase',defaultValue:'wiki'},function(q){Wiki.dokuwikibase = q;});
+/*OC.AppConfig.getCall('getValue',{app:'dokuwiki',key:'dokuwikibase',defaultValue:'wiki'},function(q){Wiki.dokuwikibase = q;});
 OC.AppConfig.getCall('getValue',{app:'dokuwiki',key:'dokuwikiurl',defaultValue:'wiki'},function(q){Wiki.dokuwikiurl = q;});
 OC.AppConfig.getCall('getValue',{app:'dokuwiki',key:'dokuwikideaccent',defaultValue:'wiki'},function(q){Wiki.dokuwikideaccent = q;});
-OC.AppConfig.getCall('getValue',{app:'dokuwiki',key:'dokuwikisepchar',defaultValue:'wiki'},function(q){Wiki.dokuwikisepchar = q;});
+OC.AppConfig.getCall('getValue',{app:'dokuwiki',key:'dokuwikisepchar',defaultValue:'wiki'},function(q){Wiki.dokuwikisepchar = q;});*/
+Wiki.getAppConfig();
 
 function bind(fnc/*, ... */) {
     var Aps = Array.prototype.slice,
@@ -883,6 +909,8 @@ $(document).ready(function(){
 				,function(filename){
 					// Action to perform when clicked
 					if (scanFiles.scanning){return;}//workaround to prevent additional http request block scanning feedback
+					var dir = $('#dir').val();
+					var file = dir+'/'+filename;
 					if (($('#dropdown').length > 0) && $('#dropdown').hasClass('drop-desc') ) {
 						$('#dropdown').hide('blind', function() {
 							$('#dropdown').remove();
@@ -890,10 +918,10 @@ $(document).ready(function(){
 						});
 						// if another file is choose
 						if (file != $('#dropdown').data('file')) {
-							Wiki.createDescriptionPopup(filename);
+							Wiki.createDescriptionPopup(file);
 						}
 					} else {
-						Wiki.createDescriptionPopup(filename);
+						Wiki.createDescriptionPopup(file);
 						//Wiki.mediapopup(filename);
 					}	
 				}
@@ -957,7 +985,7 @@ $(document).ready(function(){
 					}
 				}
 			);
-			// Overwrite Deleteaction from files-app
+			// Overwrite Delete-action from files-app
 			FileActions.register('file', 'Delete',
 				OC.PERMISSION_DELETE,
 				function () {
@@ -1032,7 +1060,10 @@ $(document).ready(function(){
 	// overwrite Files.isFileNameValid
 	$(window).load(function(){
 		Files.isFileNameValid = function(name){return Wiki.isFileNameValid(name)};
-		FileList.checkName = function(oldName, newName, isNewFile){return Wiki.checkName(oldName, newName, isNewFile)};		
+		FileList.checkName = function(oldName, newName, isNewFile){return Wiki.checkName(oldName, newName, isNewFile)};
+		$('#notification:first-child').on('click', '.cancel', function() {
+			FileList.do_delete($('#notification > span').attr('data-oldName'));
+		});	
 	});
 });
 
@@ -1052,8 +1083,10 @@ $(this).click(
 
 
 
-
-// Original stuff from files_versions (versions.js)  (changed files_versions to DokuWiki)
+/*
+ * This is the original code from owncloud versions-app (/apps/files_versions/js/versions.js)
+ * written by Frank Karlitschek licensed und the AGPL 
+*/
 
 
 function goToVersionPage(url){

@@ -19,14 +19,26 @@
 * License along with this library.  If not, see <http://www.gnu.org/licenses/>.
 * 
 */
-error_reporting (E_ALL | E_STRICT);  
-ini_set ('display_errors', 'On');
-
 OCP\JSON::checkLoggedIn();
 OCP\JSON::callCheck();
 
-$start = microtime(true);
+
+// Direct from DokuWikis medi meta files
 if(!isset($_GET['id'])){
+	OCP\JSON::error(array("data" => array( "message" => "No Filename given." )));
+}else{	
+	$file = $_GET['id'];
+	$file = str_replace(':','/',$file);
+	require_once('dokuwiki/lib/helper.php');
+	$authors = dw_getAuthorsOfMediaFile($file);
+	if($authors === METADATA_NOT_FOUND) OCP\JSON::error(array("data" => array( "message" => "Cannot get metadata.")));
+	elseif($authors === AUTHORS_NOT_FOUND) OCP\JSON::error(array("data" => array( "message" => "No authorlist available")));	
+	else OCP\JSON::success(array("data" => array( "message" => $authors )));
+	
+}
+
+// Using DB
+/*if(!isset($_GET['id'])){
 	OCP\JSON::error(array("data" => array( "message" => "No FileID given." )));
 }else{	
 	$userurl = OC_Appconfig::getValue('dokuwiki', 'dokuwikiuserurl', 'user:%USER%');
@@ -44,34 +56,6 @@ if(!isset($_GET['id'])){
 	}
 	if($rows>0) OCP\JSON::success(array("data" => array( "message" => implode(', ', $authors))));
 	else OCP\JSON::error(array("data" => array( "message" => "No authorlist available")));
-}
-
-
-
-// Direc from DokuWikis medi meta files
-/*if(!isset($_GET['id'])){
-	OCP\JSON::error(array("data" => array( "message" => "No Filename given." )));
-}else{	
-	$file = $_GET['id'];
-	$file = str_replace(':','/',$file);
-	require_once('dokuwiki/lib/utils.php');
-	global $conf;
-	if(file_exists($conf['mediametadir'].'/'.$file.'.changes')){
-		$meta = file($conf['mediametadir'].'/'.$file.'.changes');
-		if(!empty($meta)){
-			$authors = array(); 
-			foreach($meta as $onemeta){
-				$line = explode("\t", $onemeta);
-				if($line[4] != "" && !in_array($line[4],$authors)) array_push($authors,$line[4]);
-			}
-			OCP\JSON::success(array("data" => array( "message" => implode(", ", $authors) )));
-		}else{
-			OCP\JSON::error(array("data" => array( "message" => "Cannot get metadata.")));
-		}
-	}else{
-			OCP\JSON::error(array("data" => array( "message" => "No authorlist available")));
-	}	
 }*/
-file_put_contents("ZeitTesten.txt",'DB: '.(microtime(true)-$start)." Sekunden verbraucht\n",FILE_APPEND); 
 
 ?>

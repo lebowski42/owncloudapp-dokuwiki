@@ -17,6 +17,7 @@ namespace OCA\DokuWiki;
 
 // + Dokuwiki utils
 require_once('utils.php');
+if(!defined('DOKU_CHANGE_TYPE_MOVE')) define('DOKU_CHANGE_TYPE_MOVE','M');
 
 class Storage {
 
@@ -105,19 +106,15 @@ class Storage {
 			if($files_view->is_dir($filename)) {
 				return false;
 			}
-
 			// we should have a source file to work with
 			$exists = true;
 			if (!$files_view->file_exists($filename)) {
 				$exists = false;
 				//return '';
 			}
-
-			
-			
 			// Prevent default behavior, if not inside wiki-folder
 			global $wiki;
-			if(strncmp($filename, '/'.$wiki, strlen('/'.$wiki)) != 0){
+			if(!inWiki($filename)){
 				if(!$exists) return '';
 				// create all parent folders
 				$info=pathinfo($filename);
@@ -154,8 +151,8 @@ class Storage {
 	}
 	
 	
-	public function shutdownPart($filename){
-		Storage::addMediaMetaEntry('',0,'','', \OCP\User::getUser(),$filename,true);
+	public static function shutdownPart($filename){
+		Storage::addMediaMetaEntry(0,'','', \OCP\User::getUser(),$filename);
 	}
 
 	public static function saveOldRevision($filename){
@@ -164,58 +161,56 @@ class Storage {
 		global $lang;
 		$lang['created']=$l->t('created');
 		// snip /wiki from filenmae and replace / with :
-		$wikiid = str_replace('/',':',substr($filename, -strlen($filename) + strlen('/'.$wiki.'/')));
+		$wikiid = str_replace('/',':',snipWiki($filename));
 		if(!isset($_SERVER['REMOTE_USER'])) $_SERVER['REMOTE_USER'] = \OCP\User::getUser();
 		$date = media_saveOldRevision($wikiid); // use DokuWiki's method
-		//self::addMediaMetaEntry($fileid,$date,($newFile)? DOKU_CHANGE_TYPE_CREATE:DOKU_CHANGE_TYPE_EDIT,'',$_SERVER['REMOTE_USER'],$filename);
 	}
 	
 	
-	public static function addMediaMetaEntry($fileid,$date,$type,$desc='',$user,$file='', $dwMeta = true){	
+	public static function addMediaMetaEntry($date,$type,$desc='',$user,$file='',$extra=''){	
 		global $l;		
 		global $conf;
 		global $wiki;
+		global $lang;
 		if($user == '') $user = \OCP\User::getUser();
 		$files_view = new \OC\Files\View('/'.$user .'/files');
 		if($files_view->is_dir($file)) return false;
+		$fileid = '#';
 		$remote = clientIP(true);
 		$strip = array("\t", "\n");
 		$type = str_replace($strip, '', $type);
-		if($fileid == '' || $fileid <= 0){
-			$files_view = new \OC\Files\View('/'.$user .'/files');
+		if($date == 0 || $date == ''){
 			$data = $files_view->getFileInfo($file);
 			$fileid = $data['fileid'];
-			if($date == 0 || $date = '') $date = $data['mtime'];
+			$date = $data['mtime'];
 		}
-		$filename = substr($file, -strlen($file) + strlen('/'.$wiki.'/')); // snip wiki
-		if($type == '') $type = (self::isVersioned($fileid))?DOKU_CHANGE_TYPE_EDIT:DOKU_CHANGE_TYPE_CREATE;
+		$filename = snipWiki($file); 
+		$wikiname = str_replace('/',':',$filename);// to wikiname 
+		if($type == '') $type = (self::isVersioned($wikiname))?DOKU_CHANGE_TYPE_EDIT:DOKU_CHANGE_TYPE_CREATE;
 		if($type == DOKU_CHANGE_TYPE_CREATE) $desc = $l->t('created');
-		if($dwMeta) {
-			if(!isset($_SERVER['REMOTE_USER'])) $_SERVER['REMOTE_USER'] = \OCP\User::getUser();
-			addMediaLogEntry($date, str_replace('/',':',$filename), $type, $desc,"fileid=$fileid");// DokuWiki method /inc/changelog.php
-		}
 		if($desc==''){// Get the latest description as new description
-			$query = \OC_DB::prepare('SELECT `desc` FROM `*PREFIX*dokuwiki_media_meta` WHERE `fileid` = ? ORDER BY `timestamp` DESC LIMIT 1');
-			$query->execute(array($fileid));
-			$desc .= $query->fetchOne();
-			if($desc == $l->t('created')) $desc = '';
+			require_once('dokuwiki/lib/helper.php');
+			$desc = dw_descriptionOfMediaFile($filename,false);
+			if($desc == $l->t('created') || $desc == $l->t('removed')  ||  is_int($desc)) $desc = '';
 		}
-		// Add to db
-		$query = \OC_DB::prepare('INSERT IGNORE INTO `*PREFIX*dokuwiki_media_meta` (`fileid`, `timestamp`,`ip`,`mod`,`user`,`desc`) VALUES (?,?,?,?,?,?)');
-		$query->execute(array($fileid,$date,$remote,$type,$user,$desc));
-		
+		if(!isset($_SERVER['REMOTE_USER'])) $_SERVER['REMOTE_USER'] = \OCP\User::getUser();
+		if($extra=='')$extra="fileid=$fileid";
+		addMediaLogEntry($date, pathToWikiID($filename), $type, $desc,$extra);// DokuWiki method /inc/changelog.php
 	}
 	
+	// Not used anymore
 	public static function dokuwikiUploadFinish($file,$user,$newFile){
-		self::addMediaMetaEntry('',0,($newFile)? DOKU_CHANGE_TYPE_CREATE:DOKU_CHANGE_TYPE_EDIT,'',$user,$file,false);
+		//self::addMediaMetaEntryOLD('',0,($newFile)? DOKU_CHANGE_TYPE_CREATE:DOKU_CHANGE_TYPE_EDIT,'',$user,$file,false);
 	}
 
 
-	public static function isVersioned($fileid){
-		$query = \OC_DB::prepare('SELECT COUNT(`fileid`) AS `count` FROM `*PREFIX*dokuwiki_media_meta` WHERE `fileid` = ?');
-		$query->execute(array($fileid));
+	public static function isVersioned($id){
+		return file_exists(mediaMetaFN($id,'.changes'));
+		// For DB use
+		/*$query = \OC_DB::prepare('SELECT COUNT(`fileid`) AS `count` FROM `*PREFIX*dokuwiki_media_meta` WHERE `fileid` = ?');
+		$query->execute(array($id));
 		$count = $query->fetchRow();
-		return ($count['count'] != 0);
+		return ($count['count'] != 0);*/
 	}
 	/**
 	 * Delete versions of a file
@@ -252,7 +247,7 @@ class Storage {
 		$files_view = new \OC\Files\View('/'.$uid .'/files');
 		
 
-		if(!$post && strncmp($old_path, '/'.$wiki, strlen('/'.$wiki)) != 0){	
+		if(!$post && !inWiki($old_path)){	
 					// if the file already exists than it was a upload of a existing file
 			// over the web interface -> store() is the right function we need here
 			if ($files_view->file_exists($newpath)) {
@@ -271,18 +266,18 @@ class Storage {
 			}
 		}
 		if($post){
-			file_put_contents("RenmaeTesten.txt",$newpath+" m"."\n");
-			$wikiid = str_replace('/',':',substr($old_path, -strlen($old_path) + strlen('/'.$wiki.'/')));
-			$newWikiid = str_replace('/',':',substr($new_path, -strlen($new_path) + strlen('/'.$wiki.'/')));
+			$from = snipWiki($old_path);
+			$wikiid = pathToWikiID($from);
+			$newWikiid = pathToWikiID(snipWiki($new_path));
 			$oldmeta = mediaMetaFN($wikiid,'.changes');
 			$newmeta = mediaMetaFN($newWikiid,'.changes');
 			if(@file_exists($oldmeta)){
-				if (!@file_exists($newmeta)){
-					rename($oldmeta,$newmeta);
-				}else{
-					file_put_contents($newmeta,file_get_contents($oldmeta),FILE_APPEND);
-					unlink($oldmeta);
-				}
+					if (!@file_exists($newmeta)){
+						rename($oldmeta,$newmeta);
+					}else{
+						if(count(file($oldmeta)) > 1) io_saveFile($newmeta,file_get_contents($oldmeta),true); // Only if more than 1 line ("created") exists
+						unlink($oldmeta);
+					}
 				$pathinfo = pathinfo($old_path);
 				$dir = $pathinfo['dirname'];
 				$dir = $conf['mediaolddir'].substr($dir,strlen('/'.$wiki));
@@ -300,13 +295,11 @@ class Storage {
 					}
 				}
 			}
-			if(!isset($_SERVER['REMOTE_USER'])) $_SERVER['REMOTE_USER'] = \OCP\User::getUser();
-			$sum = $l->t('moved from');
-			$date = time();
-			$data = $files_view->getFileInfo($new_path);
-			$fileid = $data['fileid'];
 			//addMediaLogEntry($date, $newWikiid, 'm', $sum.' '.$wikiid);
-			self::addMediaMetaEntry($data['fileid'],$date,'m','','',$new_path,true);
+			self::addMediaMetaEntry($date,DOKU_CHANGE_TYPE_MOVE,$desc,\OCP\User::getUser(),$new_path,$from);
+			//self::addMediaMetaEntryOLD($data['fileid'],$date,'m','','',$new_path,true);
+		}else{
+				self::store($old_path);
 		}
 }
 	
@@ -628,5 +621,42 @@ class Storage {
 		}
 
 		return false;
+	}
+	
+	
+	// Old Stuff, if owncloud DB used for mediameta
+	public static function addMediaMetaEntryOLD($fileid,$date,$type,$desc='',$user,$file='', $dwMeta = true){	
+		global $l;	
+		global $conf;
+		global $wiki;
+		if($user == '') $user = \OCP\User::getUser();
+		$files_view = new \OC\Files\View('/'.$user .'/files');
+		if($files_view->is_dir($file)) return false;
+		$remote = clientIP(true);
+		$strip = array("\t", "\n");
+		$type = str_replace($strip, '', $type);
+		if($fileid == '' || $fileid <= 0){
+			$files_view = new \OC\Files\View('/'.$user .'/files');
+			$data = $files_view->getFileInfo($file);
+			$fileid = $data['fileid'];
+			if($date == 0 || $date = '') $date = $data['mtime'];
+		}
+		$filename = snipWiki($file);
+		if($type == '') $type = (self::isVersioned($fileid))?DOKU_CHANGE_TYPE_EDIT:DOKU_CHANGE_TYPE_CREATE;
+		if($type == DOKU_CHANGE_TYPE_CREATE) $desc = $l->t('created');
+		if($dwMeta) {
+			if(!isset($_SERVER['REMOTE_USER'])) $_SERVER['REMOTE_USER'] = \OCP\User::getUser();
+			addMediaLogEntry($date, pathToWikiID($filename), $type, $desc,"fileid=$fileid");// DokuWiki method /inc/changelog.php
+		}
+		if($desc==''){// Get the latest description as new description
+			$query = \OC_DB::prepare('SELECT `desc` FROM `*PREFIX*dokuwiki_media_meta` WHERE `fileid` = ? ORDER BY `timestamp` DESC LIMIT 1');
+			$query->execute(array($fileid));
+			$desc .= $query->fetchOne();
+			if($desc == $l->t('created')) $desc = '';
+		}
+		// Add to db
+		$query = \OC_DB::prepare('INSERT IGNORE INTO `*PREFIX*dokuwiki_media_meta` (`fileid`, `timestamp`,`ip`,`mod`,`user`,`desc`) VALUES (?,?,?,?,?,?)');
+		$query->execute(array($fileid,$date,$remote,$type,$user,$desc));
+
 	}
 }

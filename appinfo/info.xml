@@ -2,7 +2,7 @@
 <info>
 	<id>dokuwiki</id>
 	<name>DokuWiki</name>
-	<licence>GPL</licence>
+	<licence>AGPL</licence>
 	<author>Martin Schulte</author>
 	<require>5.0.1</require>
 	<shipped>false</shipped>

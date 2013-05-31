@@ -21,11 +21,49 @@
 */
 error_reporting (E_ALL | E_STRICT);  
 ini_set ('display_errors', 'On');
+if(!defined('')) define('DOKU_CHANGE_TYPE_MOVE','M');
 
 OCP\JSON::checkLoggedIn();
 OCP\JSON::callCheck();
 
-if(!isset($_GET['id'])){
+
+// Direct from DokuWikis medi meta files
+if(!isset($_GET['file'])){
+	OCP\JSON::error(array("data" => array( "message" => "No Filename given." )));
+}else{	
+	$url = OC_Appconfig::getValue('dokuwiki', 'dokuwikiurl', 'http://localhost/wax');
+	$fetch = "$url/lib/exe/fetch.php";
+	$file = $_GET['file'];
+	$file = str_replace(':','/',$file);
+	require_once('dokuwiki/lib/utils.php');
+	$wikiid = pathToWikiID($file);
+	global $conf;
+	if(file_exists($conf['mediametadir'].'/'.$file.'.changes')){
+		$meta = file($conf['mediametadir'].'/'.$file.'.changes');
+		
+		if(!empty($meta)){
+			$lines = count($meta);
+			if($lines <= 1){
+				OCP\JSON::error(array("data" => array( "message" => "No versions")));
+				return '';
+			}
+			$ret = '<ul>';
+			for($i = 1; $i < $lines; $i++){
+				$line = explode("\t", $meta[$i]);
+				$date = strftime('%Y/%m/%d %H:%M',$line[0]);
+				if(empty($line[4])) $line[4] = $line[1];
+				if($line[2] != DOKU_CHANGE_TYPE_MOVE) $ret .= '<li><a title="'.$line[5].'" href="'.$fetch.'?media='.$wikiid.'&rev='.$line[0].'" target="_blank"><b>'.htmlspecialchars($date).'</b>'.htmlspecialchars(' ('.$line[4].')').'</a></li>';
+			}
+			$ret .= '</ul>';
+			OCP\JSON::success(array("data" => array( "message" => $ret)));
+		}else{
+			OCP\JSON::error(array("data" => array( "message" => "No metainfos found")));
+		}
+	}
+}
+
+// If DB used
+/*if(!isset($_GET['id'])){
 	OCP\JSON::error(array("data" => array( "message" => "No FileID given." )));
 }else{
 	$url = OC_Appconfig::getValue('dokuwiki', 'dokuwikiurl', 'http://localhost/wax');
@@ -46,34 +84,5 @@ if(!isset($_GET['id'])){
 		$ret .= '</ul>';
 		OCP\JSON::success(array("data" => array( "message" => $ret)));
 	}
-}
-
-
-
-// Direc from DokuWikis medi meta files
-/*if(!isset($_GET['id'])){
-	OCP\JSON::error(array("data" => array( "message" => "No Filename given." )));
-}else{	
-	$file = $_GET['id'];
-	$file = str_replace(':','/',$file);
-	require_once('dokuwiki/lib/utils.php');
-	global $conf;
-	if(file_exists($conf['mediametadir'].'/'.$file.'.changes')){
-		$meta = file($conf['mediametadir'].'/'.$file.'.changes');
-		if(!empty($meta)){
-			$authors = array(); 
-			foreach($meta as $onemeta){
-				$line = explode("\t", $onemeta);
-				if($line[4] != "" && !in_array($line[4],$authors)) array_push($authors,$line[4]);
-			}
-			OCP\JSON::success(array("data" => array( "message" => implode(", ", $authors) )));
-		}else{
-			OCP\JSON::error(array("data" => array( "message" => "Cannot get metadata.")));
-		}
-	}else{
-			OCP\JSON::error(array("data" => array( "message" => "No authorlist available")));
-	}	
 }*/
-
-
 ?>

@@ -10,6 +10,7 @@
 "Revert a file to a previous version by clicking on its revert button" => "Setze eine Datei durch klicken auf den Zurücksetzen Button zurück",
 "moved from" => "verschoben von",
 "created" => "angelegt",
+"removed" => "gelöscht",
 "No authorlist available" => "Keine Autorenliste verfügbar",
 "File" => "Datei",
 "Linksettings" => "Linkeinstellungen",
