@@ -21,7 +21,8 @@
 */
 error_reporting (E_ALL | E_STRICT);  
 ini_set ('display_errors', 'On');
-if(!defined('')) define('DOKU_CHANGE_TYPE_MOVE','M');
+if(!defined('DOKU_CHANGE_TYPE_MOVE')) define('DOKU_CHANGE_TYPE_MOVE','M');
+if(!defined('DOKU_CHANGE_TYPE_REPLACE')) define('DOKU_CHANGE_TYPE_REPLACE','R');
 
 OCP\JSON::checkLoggedIn();
 OCP\JSON::callCheck();
@@ -47,6 +48,7 @@ if(!isset($_GET['file'])){
 				OCP\JSON::error(array("data" => array( "message" => "No versions")));
 				return '';
 			}
+			$meta =  array_reverse($meta);
 			$ret = '<ul>';
 			for($i = 1; $i < $lines; $i++){
 				$line = explode("\t", $meta[$i]);

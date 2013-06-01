@@ -180,7 +180,7 @@ Wiki={
 							data: {/*fileid: fileid*/file: encodeURIComponent(file).replace( /%2F/g, ':' ), desc: $('#filedesc').val()},
 							async: true,
 							success: function(result){
-								OC.Notification.show(t('dokuwiki','Update Description for {file}',{file: file}));
+								OC.Notification.show(t('dokuwiki','Update description for {file}',{file: file}));
 							}
 						});
 						Wiki.$popup.dialog("destroy");
@@ -215,7 +215,7 @@ Wiki={
 		var mmurl = Wiki.dokuwikiurl + '/doku.php' + '?ns=' + encodeURIComponent(dir).replace( /\//g, ':' ).replace( /%2F/g, ':' ).substring(Wiki.wiki.length+1)+'&image='+ wikiid + '&do=media&tab_details=history';
 		var html = '<div id="dropdown" class="drop drop-wiki" data-file="'+escapeHTML(file)+'">';
 		html += '<div id="private" style="margin-bottom: 5px;">';
-		html += '<button name="makelink" id="dokuwikidetail"> <img src="'+OC.imagePath('core','actions/search')+'" style="vertical-align:middle"> '+t('dokuwiki', 'details')+'</button>';
+		html += '<button name="makelink" id="dokuwikidetail"> <img src="'+OC.imagePath('core','actions/search')+'" style="vertical-align:middle"> '+t('dokuwiki', 'Details')+'</button>';
 		//html += '<input type="button" value="Detailseite" name="makelink" id="dokuwikidetail" />';
 		html += '<button name="makelink" id="dokuwikimediamanager"> <img src="'+OC.imagePath('core','actions/info')+'" style="vertical-align:middle"> '+t('dokuwiki', 'Mediamanager')+'</button>';
 		//html += '<input type="button" value="Mediamanager" name="makelink" id="dokuwikimediamanager" style="margin-left: 5px;"/>';
@@ -423,7 +423,7 @@ Wiki={
         // Textfield for description
         $p = jQuery(document.createElement('p'));
         $p.css('padding-top','5px');
-        $p.html('<label>'+t('dokuwiki','Image/file title')+'</label>' +
+        $p.html('<label>'+t('dokuwiki','Title')+'</label>' +
         '<textarea name="desc" id="desc" rows="2" style="overflow:hidden;width:90%;"></textarea>');
         //$p.html('<label>Description: </label>' +
 	      //'<input type="text" name="desc" id="desc" value="" >');
@@ -1064,6 +1064,14 @@ $(document).ready(function(){
 		$('#notification:first-child').on('click', '.cancel', function() {
 			FileList.do_delete($('#notification > span').attr('data-oldName'));
 		});	
+		// Remove delete-action for wiki folder.
+		if($('#dir').val() == '/'){
+			$wiki = $("tr[data-file='"+Wiki.wiki+"']");
+			$wiki.find('td.date').find('a.delete').remove();
+			$actions = $wiki.find('td.filename').find('a.name').find('span.fileactions');
+			$actions.find("a[data-action='Rename']").remove();
+			$actions.find("a[data-action='Share']").remove();
+		}
 	});
 });
 

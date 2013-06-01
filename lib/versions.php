@@ -18,6 +18,7 @@ namespace OCA\DokuWiki;
 // + Dokuwiki utils
 require_once('utils.php');
 if(!defined('DOKU_CHANGE_TYPE_MOVE')) define('DOKU_CHANGE_TYPE_MOVE','M');
+if(!defined('DOKU_CHANGE_TYPE_REPLACE')) define('DOKU_CHANGE_TYPE_REPLACE','R');
 
 class Storage {
 
@@ -141,9 +142,10 @@ class Storage {
 				}
 			}else{
 				if(!$exists){// There is no post_write hook for files coming from webDAV, so we use this ugly hack
-					if($isPart) register_shutdown_function('OCA\DokuWiki\Storage::mediaMeta',$filename);
+					if($isPart) register_shutdown_function('OCA\DokuWiki\Storage::shutdownPartNew',$filename);
 				}else{
 					self::saveOldRevision($filename);
+					if($isPart) register_shutdown_function('OCA\DokuWiki\Storage::shutdownPartReplace',$filename);
 				}
 				
 			}
@@ -151,8 +153,12 @@ class Storage {
 	}
 	
 	
-	public static function shutdownPart($filename){
-		Storage::addMediaMetaEntry(0,'','', \OCP\User::getUser(),$filename);
+	public static function shutdownPartNew($filename){
+		Storage::addMediaMetaEntry(0,DOKU_CHANGE_TYPE_CREATE,'', \OCP\User::getUser(),$filename);
+	}
+	
+	public static function shutdownPartReplace($filename){
+		Storage::addMediaMetaEntry(0,DOKU_CHANGE_TYPE_REPLACE,'', \OCP\User::getUser(),$filename);
 	}
 
 	public static function saveOldRevision($filename){
@@ -273,8 +279,10 @@ class Storage {
 			$newmeta = mediaMetaFN($newWikiid,'.changes');
 			if(@file_exists($oldmeta)){
 					if (!@file_exists($newmeta)){
+						$type = DOKU_CHANGE_TYPE_MOVE;
 						rename($oldmeta,$newmeta);
 					}else{
+						$type = DOKU_CHANGE_TYPE_REPLACE;
 						if(count(file($oldmeta)) > 1) io_saveFile($newmeta,file_get_contents($oldmeta),true); // Only if more than 1 line ("created") exists
 						unlink($oldmeta);
 					}
@@ -296,10 +304,10 @@ class Storage {
 				}
 			}
 			//addMediaLogEntry($date, $newWikiid, 'm', $sum.' '.$wikiid);
-			self::addMediaMetaEntry($date,DOKU_CHANGE_TYPE_MOVE,$desc,\OCP\User::getUser(),$new_path,$from);
+			self::addMediaMetaEntry($date,$type,$desc,\OCP\User::getUser(),$new_path,$from);
 			//self::addMediaMetaEntryOLD($data['fileid'],$date,'m','','',$new_path,true);
 		}else{
-				self::store($old_path);
+			self::store($old_path);
 		}
 }
 	

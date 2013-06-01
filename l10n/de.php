@@ -20,7 +20,7 @@
 "No Filename given" => "Kein Dateiname angegeben",
 "Create wikilink" => "Erstelle Wikilink",
 "Authors" => "Autoren",
-"details" => "Detailseite",
+"Details" => "Detailseite",
 "Usage on ..." => "Verwendung in ...",
 "lnk" =>  "Link zur Detailseite",
 "direct" => "Direktlink zum Orginal",
@@ -62,7 +62,8 @@
 "Frame and caption?" => "Rahmen und Bildunterschrift?",
 "Description" => "Beschreibung",
 "Description of {file}" => "Beschreibung von {file}",
-"Update Description for {file}" => "Beschreibung für {file} geändert",
+"Update description for {file}" => "Beschreibung für {file} geändert",
 "Save changes" => "Speichern",
-"Close" => "Schließen"
+"Close" => "Schließen",
+"Title" => "Title",
 );
