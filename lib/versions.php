@@ -304,7 +304,7 @@ class Storage {
 				}
 			}
 			//addMediaLogEntry($date, $newWikiid, 'm', $sum.' '.$wikiid);
-			self::addMediaMetaEntry($date,$type,$desc,\OCP\User::getUser(),$new_path,$from);
+			self::addMediaMetaEntry($date,$type,'',\OCP\User::getUser(),$new_path,$from);
 			//self::addMediaMetaEntryOLD($data['fileid'],$date,'m','','',$new_path,true);
 		}else{
 			self::store($old_path);

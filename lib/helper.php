@@ -119,7 +119,7 @@ function dw_getAuthorsOfMediaFile($file){
 	* @param $newDesc the new description if should be set.
 	* @return $mixed description or success or error constant (see above)
 */
-function dw_descriptionOfMediaFile($file,$set=false, $newDesc){
+function dw_descriptionOfMediaFile($file,$set=false, $newDesc=''){
 	require_once('dokuwiki/lib/utils.php');
 	global $conf;
 	$file = $conf['mediametadir'].'/'.$file.'.changes';
