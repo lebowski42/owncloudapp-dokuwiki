@@ -18,6 +18,10 @@
 * License along with this library.  If not, see <http://www.gnu.org/licenses/>.
 * 
 */
+
+// We need Files, but not for the settings stuff.
+var Files = Files || {};
+
 Wiki={
 	wiki: 'wiki',
 	dokuwikiurl: 'http://localhost/dokuwiki',
