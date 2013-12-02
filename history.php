@@ -22,7 +22,7 @@
  */
 
 OCP\User::checkLoggedIn( );
-OCP\Util::addStyle('dokuwiki', 'versions');
+OCP\Util::addStyle('dokuwiki', 'style');
 $tmpl = new OCP\Template( 'dokuwiki', 'history', 'user' );
 $l = OC_L10N::get('dokuwiki');
 
