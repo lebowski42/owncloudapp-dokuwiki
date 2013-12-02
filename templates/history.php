@@ -22,7 +22,7 @@ if( isset( $_['message'] ) ) {
 	foreach ( $_['versions'] as $v ) {
 		p(' ');
 		p(OCP\Util::formatDate( doubleval($v['version'])));
-		print_unescaped(' <a href="'.OCP\Util::linkTo('files_versions', 'history.php',
+		print_unescaped(' <a href="'.OCP\Util::linkTo('dokuwiki', 'history.php',
 			array('path' => $_['path'], 'revert' => $v['version'])) .'" class="button">Revert</a><br /><br />');
 		if ( $v['cur'] ) {
 			print_unescaped('  (<b>Current</b>)');
