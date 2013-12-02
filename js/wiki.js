@@ -1037,7 +1037,7 @@ $(document).ready(function(){
 	}
 	// overwrite Files.isFileNameValid
 	$(window).load(function(){
-		if($('#dir').val().substr(0, 5) == '/'+Wiki.wiki){
+		if($('#dir').length != 0 && $('#dir').val().substr(0, 5) == '/'+Wiki.wiki){
 		        Files.isFileNameValid = function(name){return Wiki.isFileNameValid(name)};
 		        FileList.checkName = function(oldName, newName, isNewFile){return Wiki.checkName(oldName, newName, isNewFile)};
                 }
