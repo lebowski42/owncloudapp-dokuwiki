@@ -867,7 +867,8 @@ function bind(fnc/*, ... */) {
 $(document).ready(function(){
 	// Overwrite getUniqueName from apps/files/js/files.js (line 1061-1084) to sanitize filename for new files and folders
 	getUniqueName = function(newname){
-			return Wiki.getUniqueName(Wiki.sanitizeFilename(newname));
+			if($('#dir').length != 0 && $('#dir').val().substr(0, 5) == '/'+Wiki.wiki) return Wiki.getUniqueName(Wiki.sanitizeFilename(newname));
+			return Wiki.getUniqueName(newname);
 	}
 	
 	
