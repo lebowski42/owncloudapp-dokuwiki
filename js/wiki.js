@@ -875,8 +875,6 @@ $(document).ready(function(){
 	if (typeof FileActions !== 'undefined') {
 		// Add versions button to 'files/index.php', but only outside the wiki-folder.
 		if($('#dir').val().substr(0, 5) == '/'+Wiki.wiki){
-                        FileActions.actions['file'][t('files_versions', 'Versions')] = false;
-                        //FileActions.icons[t('files_versions', 'Versions')] = null;
 			FileActions.register(
 				'file'
 				, t('dokuwiki', 'Description')
@@ -1034,10 +1032,15 @@ $(document).ready(function(){
 					Wiki.rename(filename);
 				}
 			);
+			
+            //FileActions.actions['file'][t('files_versions', 'Versions')] = false;
+            //FileActions.icons[t('files_versions', 'Versions')] = null;
 		}
 	}
 	// overwrite Files.isFileNameValid
 	$(window).load(function(){
+		$("a[data-action='Versionen']").remove();
+		//console.log(b);
 		if($('#dir').length != 0 && $('#dir').val().substr(0, 5) == '/'+Wiki.wiki){
 		        Files.isFileNameValid = function(name){return Wiki.isFileNameValid(name)};
 		        FileList.checkName = function(oldName, newName, isNewFile){return Wiki.checkName(oldName, newName, isNewFile)};
