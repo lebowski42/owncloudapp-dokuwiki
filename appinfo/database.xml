@@ -7,6 +7,7 @@
 
  <charset>utf8</charset>
 
+<!-- for version app
  <table>
   <name>*dbprefix*files_versions</name>
   <declaration>
@@ -28,6 +29,7 @@
    
  </declaration>
  </table>
+ -->
  
  <table>
   <name>*dbprefix*dokuwiki_media_use</name>
