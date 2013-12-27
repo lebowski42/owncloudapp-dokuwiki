@@ -59,7 +59,7 @@ function isEmptyDir($dir){
 	* @param $filename
 	* @return string
 */
-function buildNotExistingFileNameWithoutSpaces($path, $filename) {
+function buildNotExistingFileNameWithoutSpaces($path, $filename,\OC\Files\View $view) {
 		if($path==='/') {
 			$path='';
 		}
@@ -73,7 +73,7 @@ function buildNotExistingFileNameWithoutSpaces($path, $filename) {
 
 		$newpath = $path . '/' . $filename;
 		$counter = 2;
-		while (\OC\Files\Filesystem::file_exists($newpath)) {
+		while ($view->file_exists($newpath)) {
 			$newname = $name.'_'.$counter.$ext;
 			$newpath = $path . '/' . $newname;
 			$counter++;
