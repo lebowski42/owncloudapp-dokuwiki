@@ -54,6 +54,7 @@
 "off" => "aus",
 "This have to be exactly the same value used for the config key \"deaccent\" in your DokuWiki installation." => "Die muss genau derselbe Wert sein, der auch für den Konfigurationsschlüssel \"deaccent\" in der DokuWiki-Installation verwendet wird.",
 "The file or folder name must be lowercase" => "Der Datei- bzw. Ordnername muss klein geschrieben werden",
+"The file or folder name must be lowercase in the wiki/ folder" => "Im Ordner wiki/  muss der Datei- bzw. Ordnername klein geschrieben werden",
 "Media not in use" => "Wird noch auf keiner Seite verwendet",
 "Word separator in filenames" => "Worttrenner in Dateinamen",
 "This have to be exactly the same value used for the config key \"sepchar\" in your DokuWiki installation." => "Dies muss genau derselbe Wert sein, der auch für den Konfigurationsschlüssel \"sepchar\" in der DokuWiki-Installation verwendet wird.",
