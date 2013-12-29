@@ -948,8 +948,7 @@ function bind(fnc/*, ... */) {
     };
 }
 
-
-$(document).ready(function(){
+function init(){
 	// Overwrite getUniqueName from apps/files/js/files.js (line 1061-1084) to sanitize filename for new files and folders
 	getUniqueName = function(newname){
 			return Wiki.getUniqueName(Wiki.sanitizeFilename(newname));
@@ -959,7 +958,8 @@ $(document).ready(function(){
         if (typeof FileActions !== 'undefined' && $('#dir').length > 0) {
 		// Add versions button to 'files/index.php', but only outside the wiki-folder.
 		if($('#dir').val().substr(0, 5) == '/'+Wiki.wiki){
-                        FileActions.actions['file'][t('files_versions', 'Versions')] = false;
+						// Doesn't work in oc6, look line 1156
+                        //FileActions.actions['file'][t('files_versions', 'Versions')] = false;
                         //FileActions.icons[t('files_versions', 'Versions')] = null;
 			FileActions.register(
 				'file'
@@ -1122,6 +1122,11 @@ $(document).ready(function(){
 	}
 	// overwrite Files.isFileNameValid
 	$(window).load(function(){
+		// Remove Versioning-action from menu inside wiki
+		if($('#dir').val().substr(0, 5) == '/'+Wiki.wiki){
+			$("a[data-action='"+t('files_versions', 'Versions')+"']").remove();
+			$("a.delete-selected").remove();
+		}
 		if($('#dir').length != 0 && $('#dir').val().substr(0, 5) == '/'+Wiki.wiki){
                         Wiki.oldFileNameValid = Files.isFileNameValid;
 		        Files.isFileNameValid = function(name){return Wiki.isFileNameValid(name)};
@@ -1141,8 +1146,23 @@ $(document).ready(function(){
 			$actions.find("a[data-action='Share']").remove();
 		}
 	});
+}
+
+
+$(document).ready(function(){
+	init();
 });
 
+$(this).click(
+	function(event) {
+	// Dirty hack to rebuild the menu for outside wiki. If we leave wiki folder, the page must be reload.
+	if($('#dir').val().substr(0, 5) != '/'+Wiki.wiki && $("a[data-action='"+t('dokuwiki', 'Wiki')+"']").exists()){
+		window.location.reload()
+	}
+	init();
+	OC.Notification.hide();
+	}
+);
 
 
 $(this).click(

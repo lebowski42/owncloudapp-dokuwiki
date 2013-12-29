@@ -120,10 +120,8 @@ class Hooks {
 			if($oldpath == $wiki || $oldpath == '/'.$wiki || cleanID($filename) != $filename){
 				 $params['run'] = false;
 			}else{	
-				if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true') {
 					if($oldpath<>'' && $newpath<>'') {
 						Storage::rename( $oldpath, $newpath );
-					}
 				}
 			}
 			
@@ -141,7 +139,7 @@ class Hooks {
 		$newpath = $params[\OC\Files\Filesystem::signal_param_newpath];
 		
 		 if (!inWiki($newpath)) {
-                        return;
+             return;
         }
         
 		// Do we've a valid filename (no spaces, etc.)
