@@ -60,7 +60,7 @@ function snipWiki($path){
 */
 function inWiki($path){
 	global $wiki;
-	return (strncmp($path, '/'.$wiki, strlen('/'.$wiki)) == 0);	
+	return $path != '' && (strncmp($path, '/'.$wiki, strlen('/'.$wiki)) == 0);	
 }
 
 /**

@@ -19,14 +19,16 @@
 * 
 */
 
-// We need Files, but not for the settings stuff.
+// We need Files, but not for the settings stuff. But it needs to be
+// defined.
 var Files = Files || {};
 
-Wiki={
+Wiki = {
 	wiki: 'wiki',
 	dokuwikiurl: 'http://localhost/dokuwiki',
 	dokuwikidetail: '/lib/exe/detail.php',
 	dokuwikibase: '/var/www/dokuwikitest',
+        dokuwikiembed: 'disabled', // set to URL inside OC if embedding app is enabled
 	dokuwikideaccent: '0',
 	dokuwikisepchar: "_",
 	//From DokuWiki
@@ -38,25 +40,24 @@ Wiki={
 	img: true,
 	filenamecache: {},
 	cleanfilenames: {},
-	
-	// original from apps/files/js/files.js
+	oldFileNameValid: function (name) { return false; },
+        oldCheckName: function (modName, newName, isNewFile) { return false },
+
+	// we call the old control function from Files and then add additional test.
 	isFileNameValid:function (name) {
+                if (!Wiki.oldFileNameValid(name)) {
+                        return false;
+                }
+
 		//save ajax calls
 		if(name in Wiki.filenamecache && Wiki.filenamecache[name] != undefined)  return Wiki.filenamecache[name];
-		if(name === '.') {
-			OC.Notification.show(t('files', '\'.\' is an invalid file name.'));
-			return false;
-		}
-		if(name.length == 0) {
-			OC.Notification.show(t('files', 'File name cannot be empty.'));
-			return false;
-		}
+
 		if(name.toLowerCase() != name){
-			OC.Notification.show(t('dokuwiki', 'The file or folder name must be lowercase'));
+			OC.Notification.show(t('dokuwiki', 'The file or folder name must be lowercase in the wiki/ folder'));
 			return false;
 		}
-		// check for invalid characters
-		var invalid_characters = ['\\', '/', '<', '>', ':', '"', '|', '?', '*',')','(',']','[','{','}','&','%','$','§','+','!',' '];
+		// check for additonal invalid characters
+		var invalid_characters = [/*'\\', '/', '<', '>', ':', '"', '|', '?', '*', */ ')','(',']','[','{','}','&','%','$','§','+','!',' '];
 		for (var i = 0; i < invalid_characters.length; i++) {
 			if (name.indexOf(invalid_characters[i]) != -1) {
 				OC.Notification.show(t('dokuwiki', "Invalid name, \\, /, <, >, :, \", |, ?, *, ), (, ], [, {, }, &, %, $, §, +, ! and spaces are not allowed."));
@@ -202,6 +203,15 @@ Wiki={
         
         Wiki.$popup.dialog('open');
 	},
+
+        makeDokuWikiURL: function(dwPath) {
+                var dwURL = Wiki.dokuwikiurl;
+                if (Wiki.dokuwikiembed && Wiki.dokuwikiembed != 'disabled') {
+                        dwURL = Wiki.dokuwikiembed;
+                        dwPath = '?wikiPath='+Wiki.urlencode(dwPath);
+                }
+                return dwURL + dwPath;
+        },
 	
 	createWikiDropdown: function(filename, file, dir){
 		// Check if it is a directory.
@@ -213,10 +223,10 @@ Wiki={
 		// Todo check rewrite
 		file = file.substring(Wiki.wiki.length+1);
 		var wikiid = file.replace( /\//g, ':' ).replace( /%2F/g, ':' );
-		var detailurl = Wiki.dokuwikiurl + Wiki.dokuwikidetail + '?media=' + wikiid;
+		var detailurl = Wiki.makeDokuWikiURL(Wiki.dokuwikidetail + '?media=' + wikiid);
 		
 		//http://localhost/wax/doku.php?id=start&ns=neuer&image=neuer%3Aausgabe.pdf&do=media
-		var mmurl = Wiki.dokuwikiurl + '/doku.php' + '?ns=' + encodeURIComponent(dir).replace( /\//g, ':' ).replace( /%2F/g, ':' ).substring(Wiki.wiki.length+1)+'&image='+ wikiid + '&do=media&tab_details=history';
+	        var mmurl = Wiki.makeDokuWikiURL('/doku.php' + '?ns=' + encodeURIComponent(dir).replace( /\//g, ':' ).replace( /%2F/g, ':' ).substring(Wiki.wiki.length+1)+'&image='+ wikiid + '&do=media&tab_details=history');
 		var html = '<div id="dropdown" class="drop drop-wiki" data-file="'+escapeHTML(file)+'">';
 		html += '<div id="private" style="margin-bottom: 5px;">';
 		html += '<button name="makelink" id="dokuwikidetail"> <img src="'+OC.imagePath('core','actions/search')+'" style="vertical-align:middle"> '+t('dokuwiki', 'Details')+'</button>';
@@ -278,40 +288,97 @@ Wiki={
 		
 	},
 	versionspopup: function(file){
+                var popup = $('#wikiversions');
+                if (popup.length > 0) {
+                        popup.dialog('close');
+                        popup.dialog('destroy').remove();
+                        popup.remove();
+                }
 		$.ajax({url: OC.filePath('dokuwiki', 'ajax', 'wikiVersions.php'), async: false, data: {file: file, id: Wiki.getFileID(file)/*encodeURIComponent(file).replace( /%2F/g, ':' )*/}, success: function(result) {
-			authorpopup = jQuery(document.createElement('div'))
-						.attr('id', 'wikiversions')
-						.dialog({ width: 280, height: 200,modal: false,
-						draggable: true, title: t('dokuwiki', 'Versions'),
-						resizable: true});	
-			authorpopup.append('<p><b>'+t('dokuwiki','File')+': '+file+'</b></p><hr/><div>'+t('dokuwiki',result.data.message)+'</div>');
-			}});
+                        popup = jQuery(document.createElement('div'))
+                                .attr('id', 'wikiversions')
+                                .dialog({ width: 280,
+                                          height: 'auto',
+                                          modal: false,
+					  draggable: true,
+                                          title: t('dokuwiki', 'Versions'),
+					  resizable: true,
+                                          // close: function(event, ui) {
+                                          //         $('#wikiversions').dialog('close');
+                                          //         $('#wikiversions').dialog('destroy').remove();
+                                          // }
+                                        });	
+			popup.append('<p><b>'+t('dokuwiki','File')+': '+file+'</b></p><hr/><div>'+t('dokuwiki',result.data.message)+'</div>');
+                        $('a.wikiversion').click(function (event) {
+                                if ($('#wikiversionshow').length > 0) {
+                                        $('#wikiversionshow').dialog('close');
+                                        $('#wikiversionshow').dialog('destroy').remove();
+                                        $('#wikiversionshow').remove();
+                                }
+                                event.preventDefault();
+                                var versionURL = $(this).attr('href');
+                                popup = jQuery(document.createElement('div'))
+                                        .attr('id', 'wikiversionshow');
+                                popup.append('<iframe id="wikiversionshowframe" src="'+versionURL+'" height="100%" width="100%"></iframe>');
+                                popup.dialog({ width: 'auto',
+                                               height: 'auto',
+                                               modal: false,
+                                               draggable: true,
+                                               title: t('dokuwiki', file),
+                                               close: function(event, ui) {
+                                                       $('#wikiversionshowframe').remove();
+                                                       $('#wikiversionshow').dialog('close');
+                                                       $('#wikiversionshow').dialog('destroy').remove();
+                                               }
+                                             });
+                                $('#wikiversionshowframe').load(function () {
+                                        popup.height($(this).contents().height());
+                                        popup.width($(this).contents().width());
+                                });
+                        });
+		}});
 	},	
 	authorpopup: function(file){
+                var popup = $('#fileauthors');
+                if (popup.length > 0) {
+                        popup.dialog('close');
+                        popup.dialog('destroy').remove();
+                        popup.remove();
+                }
 		$.ajax({url: OC.filePath('dokuwiki', 'ajax', 'authors.php'), async: false, data: {id: /*Wiki.getFileID(file)*/encodeURIComponent(file).replace( /%2F/g, ':' )}, success: function(result) {
-			authorpopup = jQuery(document.createElement('div'))
-						.attr('id', 'fileauthors')
-						.dialog({ width: 280, height: 200,modal: false,
-						draggable: true, title: t('dokuwiki', 'Authors'),
-						resizable: true});	
-			authorpopup.append('<p><b>'+t('dokuwiki','File')+': '+file+'</b></p><hr/><div>'+t('dokuwiki',result.data.message)+'</div>');
-			}});
+			popup = jQuery(document.createElement('div'))
+				.attr('id', 'fileauthors')
+				.dialog({ width: 280, height: 200,modal: false,
+					  draggable: true, title: t('dokuwiki', 'Authors'),
+					  resizable: true});	
+			popup.append('<p><b>'+t('dokuwiki','File')+': '+file+'</b></p><hr/><div>'+t('dokuwiki',result.data.message)+'</div>');
+		}});
 	},
 	
 	usedinpopup: function(file){
+                var popup = $('#fileusedin');
+                if (popup.length > 0) {
+                        popup.dialog('close');
+                        popup.dialog('destroy').remove();
+                        popup.remove();
+                }
 		$.ajax({url: OC.filePath('dokuwiki', 'ajax', 'mediaUse.php'), async: false, data: {file: Wiki.wiki +'/'+file}, success: function(result) {
-			usedinpopup = jQuery(document.createElement('div'))
+			popup = jQuery(document.createElement('div'))
 				.attr('id', 'fileusedin')
 				.dialog({ width: 280, height: 200,modal: false,
-				draggable: true, title: t('dokuwiki', 'Usage on ...'),
-				resizable: true});
-			usedinpopup.append('<p><b>'+t('dokuwiki','File')+': '+file+'</b></p><hr/><div>'+t('dokuwiki',result.data.message)+'</div>');
-			}});
+				          draggable: true, title: t('dokuwiki', 'Usage on ...'),
+				          resizable: true});
+			popup.append('<p><b>'+t('dokuwiki','File')+': '+file+'</b></p><hr/><div>'+t('dokuwiki',result.data.message)+'</div>');
+		}});
 	},
 	
 	gotoPage: function(url){
-		window.open(url);
-		//window.location.assign(url);
+                if (Wiki.dokuwikiembed) {
+		        //window.location.assign(url);
+		        window.open(url, '_self');
+                } else {
+		        window.open(url, 'DokuWiki');
+                }
 	},
 	
 	getFileID: function(filename){
@@ -801,28 +868,13 @@ Wiki={
 	},
 	checkName:function(modName, newName, isNewFile) {
 		if (isNewFile || $('tr').filterAttr('data-file', newName).length > 0) {
-			var html;
 			//renamedFilename = Wiki.sanitizeFilename(newName);
 			if( Wiki.sanitizeFilename(newName)!=newName){
 					OC.dialogs.alert(t('dokuwiki', '{new_name} is not a valid filename. Please rename it and try again.', {new_name: escapeHTML(newName)}), t('dokuwiki','Error uploading file'));
 					//html = t('dokuwiki', '{new_name} is not a valid filename. Please rename it and try again.', {new_name: escapeHTML(newName)});	
-			}else{
-				if(isNewFile){
-					html = t('files', '{new_name} already exists', {new_name: escapeHTML(newName)})+'<span class="replace">'+t('files', 'replace')+'</span><span class="suggest">'+t('files', 'suggest name')+'</span>&nbsp;<span class="cancel">'+t('files', 'cancel')+'</span>';
-				}else{
-					html = t('files', '{new_name} already exists', {new_name: escapeHTML(newName)})+'<span class="replace">'+t('files', 'replace')+'</span><span class="cancel">'+t('files', 'cancel')+'</span>';
-				}
-			
-			html = $('<span>' + html + '</span>');
-			html.attr('data-oldName', modName);
-			html.attr('data-newName', newName);
-			html.attr('data-isNewFile', isNewFile);
-            OC.Notification.showHtml(html);
 			}
-			return true;
-		} else {
-			return false;
-		}
+                }
+                return Wiki.oldCheckName(modName, newName, isNewFile);
 	},
 	getAppConfig: function(){
 		$.ajax({
@@ -830,6 +882,7 @@ Wiki={
 			async: false,
 			success: function(config) {
 				if(config.status == 'success') {
+                                        if('embeddeddokuwiki' in config.data) Wiki.dokuwikiembed = config.data['embeddeddokuwiki'];
 					if('dokuwikibase' in config.data) Wiki.dokuwikibase = config.data['dokuwikibase'];
 					if('dokuwikiurl' in config.data) Wiki.dokuwikiurl = config.data['dokuwikiurl'];
 					if('dokuwikideaccent' in config.data) Wiki.dokuwikideaccent = config.data['dokuwikideaccent'];
@@ -837,7 +890,39 @@ Wiki={
 				}
 			}
 		});
-	}
+	},
+        urlencode: function(str) {
+                // http://kevin.vanzonneveld.net
+                // + original by: Philip Peterson
+                // + improved by: Kevin van Zonneveld (http://kevin.vanzonneveld.net)
+                // + input by: AJ
+                // + improved by: Kevin van Zonneveld (http://kevin.vanzonneveld.net)
+                // + improved by: Brett Zamir (http://brett-zamir.me)
+                // + bugfixed by: Kevin van Zonneveld (http://kevin.vanzonneveld.net)
+                // + input by: travc
+                // + input by: Brett Zamir (http://brett-zamir.me)
+                // + bugfixed by: Kevin van Zonneveld (http://kevin.vanzonneveld.net)
+                // + improved by: Lars Fischer
+                // + input by: Ratheous
+                // + reimplemented by: Brett Zamir (http://brett-zamir.me)
+                // + bugfixed by: Joris
+                // + reimplemented by: Brett Zamir (http://brett-zamir.me)
+                // % note 1: This reflects PHP 5.3/6.0+ behavior
+                // % note 2: Please be aware that this function expects to encode into UTF-8 encoded strings, as found on
+                // % note 2: pages served as UTF-8
+                // * example 1: urlencode('Kevin van Zonneveld!');
+                // * returns 1: 'Kevin+van+Zonneveld%21'
+                // * example 2: urlencode('http://kevin.vanzonneveld.net/');
+                // * returns 2: 'http%3A%2F%2Fkevin.vanzonneveld.net%2F'
+                // * example 3: urlencode('http://www.google.nl/search?q=php.js&ie=utf-8&oe=utf-8&aq=t&rls=com.ubuntu:en-US:unofficial&client=firefox-a');
+                // * returns 3: 'http%3A%2F%2Fwww.google.nl%2Fsearch%3Fq%3Dphp.js%26ie%3Dutf-8%26oe%3Dutf-8%26aq%3Dt%26rls%3Dcom.ubuntu%3Aen-US%3Aunofficial%26client%3Dfirefox-a'
+                str = (str + '').toString();
+
+                // Tilde should be allowed unescaped in future versions of PHP (as reflected below), but if you want to reflect current
+                // PHP behavior, you would need to add ".replace(/~/g, '%7E');" to the following.
+                return encodeURIComponent(str).replace(/!/g, '%21').replace(/'/g, '%27').replace(/\(/g, '%28').
+                        replace(/\)/g, '%29').replace(/\*/g, '%2A').replace(/%20/g, '+');
+        }
 }
 // Set configvalues
 /*OC.AppConfig.getCall('getValue',{app:'dokuwiki',key:'dokuwikibase',defaultValue:'wiki'},function(q){Wiki.dokuwikibase = q;});
@@ -863,17 +948,19 @@ function bind(fnc/*, ... */) {
     };
 }
 
-function init(){
+
+$(document).ready(function(){
 	// Overwrite getUniqueName from apps/files/js/files.js (line 1061-1084) to sanitize filename for new files and folders
 	getUniqueName = function(newname){
-			if($('#dir').length != 0 && $('#dir').val().substr(0, 5) == '/'+Wiki.wiki) return Wiki.getUniqueName(Wiki.sanitizeFilename(newname));
-			return Wiki.getUniqueName(newname);
+			return Wiki.getUniqueName(Wiki.sanitizeFilename(newname));
 	}
 	
 	
-	if (typeof FileActions !== 'undefined') {
+        if (typeof FileActions !== 'undefined' && $('#dir').length > 0) {
 		// Add versions button to 'files/index.php', but only outside the wiki-folder.
 		if($('#dir').val().substr(0, 5) == '/'+Wiki.wiki){
+                        FileActions.actions['file'][t('files_versions', 'Versions')] = false;
+                        //FileActions.icons[t('files_versions', 'Versions')] = null;
 			FileActions.register(
 				'file'
 				, t('dokuwiki', 'Description')
@@ -975,7 +1062,7 @@ function init(){
 						dir = dir.substring(Wiki.wiki.length+1);
 						var file = dir+'/'+filename;
 						var wikiid = file.replace( /\//g, ':' ).replace( /%2F/g, ':' );
-						var mmurl = Wiki.dokuwikiurl + '/doku.php' + '?ns=' + encodeURIComponent(dir).replace( /\//g, ':' ).replace( /%2F/g, ':' )+'&image='+ wikiid + '&do=media';
+						var mmurl = Wiki.makeDokuWikiURL('/doku.php' + '?ns=' + encodeURIComponent(dir).replace( /\//g, ':' ).replace( /%2F/g, ':' )+'&image='+ wikiid + '&do=media');
 						Wiki.gotoPage(mmurl);
 					}else{// From  apps/files/js/files.js
 						if (Files.cancelUpload(filename)) {
@@ -1031,21 +1118,15 @@ function init(){
 					Wiki.rename(filename);
 				}
 			);
-			
-            //FileActions.actions['file'][t('files_versions', 'Versions')] = false;
-            //FileActions.icons[t('files_versions', 'Versions')] = null;
 		}
 	}
-	
 	// overwrite Files.isFileNameValid
 	$(window).load(function(){
-		// Remove Versioning-action from menu inside wiki
-		if($('#dir').val().substr(0, 5) == '/'+Wiki.wiki){
-			$("a[data-action='"+t('files_versions', 'Versions')+"']").remove();
-		}
-		//console.log(b);
 		if($('#dir').length != 0 && $('#dir').val().substr(0, 5) == '/'+Wiki.wiki){
+                        Wiki.oldFileNameValid = Files.isFileNameValid;
 		        Files.isFileNameValid = function(name){return Wiki.isFileNameValid(name)};
+
+                        Wiki.oldCheckName = FileList.checkName;
 		        FileList.checkName = function(oldName, newName, isNewFile){return Wiki.checkName(oldName, newName, isNewFile)};
                 }
 		$('#notification:first-child').on('click', '.cancel', function() {
@@ -1059,28 +1140,8 @@ function init(){
 			$actions.find("a[data-action='Rename']").remove();
 			$actions.find("a[data-action='Share']").remove();
 		}
-	});	
-	
-}
-
-
-$(document).ready(function(){
-	init();
+	});
 });
-
-
-
-$(this).click(
-	function(event) {
-	// Dirty hack to rebuild the menu for outside wiki. If we leave wiki folder, the page must be reload.
-	if($('#dir').val().substr(0, 5) != '/'+Wiki.wiki && $("a[data-action='"+t('dokuwiki', 'Wiki')+"']").exists()){
-		window.location.reload()
-	}
-	init();
-	}
-);
-
-
 
 
 
@@ -1107,8 +1168,6 @@ $(this).click(
 
 	}
 );
-
-
 
 
 

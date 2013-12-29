@@ -30,17 +30,19 @@ class Hooks {
 	 */
 	public static function pre_write_hook($params) {
 		$path = $params[\OC\Files\Filesystem::signal_param_path];
+		
+		if (!inWiki($path)) {
+			return;
+        }
 		// Do we've a valid filename (no spaces, etc.)
 		$filename = basename($path);
 		$specialFile = allowedFilenameIfNotCleandID($filename);
 		if(!$specialFile  && cleanID($filename) != $filename && inWiki($path)){
 				$params['run'] = false;
 		}else{		
-			if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true' && !$specialFile && inWiki($path))  {	
 				if($path<>'') {
 					Storage::store($path);
 				}
-			}
 		}
 	}
 	
@@ -50,6 +52,10 @@ class Hooks {
 		global $wiki;
 		$path = $params[\OC\Files\Filesystem::signal_param_path];
 		// Do we've a valid filename (no spaces, etc.)
+		
+		if (!inWiki($path)) {
+                        return;
+        }
 		$filename = basename($path);
 		$dir = dirname($path);
 		$specialFile = allowedFilenameIfNotCleandID($filename);
@@ -70,11 +76,9 @@ class Hooks {
 			$newname = \OC\Files\Filesystem::normalizePath($newname);
 			\OC\Files\Filesystem::rename($path, $newname);
 		}else{		
-			if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true') {	
-				if($path<>'' && inWiki($path)) {
-					Storage::addMediaMetaEntry(0,'','', \OCP\User::getUser(),$path);
-					//Storage::addMediaMetaEntryOLD('',0,'','', \OCP\User::getUser(),$path,true);
-				}
+			if($path<>'') {
+				Storage::addMediaMetaEntry(0,'','', \OCP\User::getUser(),$path);
+				//Storage::addMediaMetaEntryOLD('',0,'','', \OCP\User::getUser(),$path,true);
 			}
 		}		
 }	
@@ -122,6 +126,7 @@ class Hooks {
 					}
 				}
 			}
+			
 		}else{
 			// renaming to a name outside wiki folder means moving
 			if(inWiki($oldpath) && !$insideWiki){
@@ -134,27 +139,16 @@ class Hooks {
 	public static function post_rename_hook($params) {
 		$oldpath = $params[\OC\Files\Filesystem::signal_param_oldpath];
 		$newpath = $params[\OC\Files\Filesystem::signal_param_newpath];
+		
+		 if (!inWiki($newpath)) {
+                        return;
+        }
+        
 		// Do we've a valid filename (no spaces, etc.)
 		$filename = basename($newpath);
 		global $wiki;
-		if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true') {
-			if($oldpath<>'' && $newpath<>'' && inWiki($newpath)) {
+			if($oldpath<>'' && $newpath<>'') {
 				Storage::rename($oldpath,$newpath,true);
-			}
-		}
-	}
-
-	/**
-	 * @brief clean up user specific settings if user gets deleted
-	 * @param array with uid
-	 *
-	 * This function is connected to the pre_deleteUser signal of OC_Users
-	 * to remove the used space for versions stored in the database
-	 */
-	public static function deleteUser_hook($params) {
-		if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true') {
-			$uid = $params['uid'];
-			Storage::deleteUser($uid);
 			}
 	}
 
