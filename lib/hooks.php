@@ -36,7 +36,7 @@ class Hooks {
 		if(!$specialFile  && cleanID($filename) != $filename && inWiki($path)){
 				$params['run'] = false;
 		}else{		
-			if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true' && !$specialFile)  {	
+			if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true' && !$specialFile && inWiki($path))  {	
 				if($path<>'') {
 					Storage::store($path);
 				}
@@ -77,25 +77,7 @@ class Hooks {
 				}
 			}
 		}		
-}
-
-
-	/**
-	 * @brief Erase versions of deleted file
-	 * @param array
-	 *
-	 * This function is connected to the delete signal of OC_Filesystem
-	 * cleanup the versions directory if the actual file gets deleted
-	 */
-	public static function remove_hook($params) {
-		$path = $params[\OC\Files\Filesystem::signal_param_path];
-		if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true') {
-			if($path<>'') {
-				Storage::delete($path);
-			}
-		}
-	}
-	
+}	
 	
 	/**
 	 * @brief Erase versions of deleted file
@@ -128,21 +110,24 @@ class Hooks {
 		$newpath = $params[\OC\Files\Filesystem::signal_param_newpath];
 		// Do we've a valid filename (no spaces, etc.)
 		$filename = basename($newpath);
+		$insideWiki = inWiki($newpath);
 		global $wiki;
-		if($oldpath == $wiki || $oldpath == '/'.$wiki || cleanID($filename) != $filename){
-			
-			 $params['run'] = false;
-		// renaming to a name outside wiki folder means moving
-		}elseif(inWiki($oldpath) && !inWiki($newpath)){
-			$params['run'] = false;
-		}else{	
-			if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true') {
-				if($oldpath<>'' && $newpath<>'') {
-					Storage::rename( $oldpath, $newpath );
+		if($insideWiki){
+			if($oldpath == $wiki || $oldpath == '/'.$wiki || cleanID($filename) != $filename){
+				 $params['run'] = false;
+			}else{	
+				if(\OCP\Config::getSystemValue('dokuwiki', Storage::DEFAULTENABLED)=='true') {
+					if($oldpath<>'' && $newpath<>'') {
+						Storage::rename( $oldpath, $newpath );
+					}
 				}
-
 			}
-		 }
+		}else{
+			// renaming to a name outside wiki folder means moving
+			if(inWiki($oldpath) && !$insideWiki){
+				 $params['run'] = false;
+			}
+		}
 	}
 	
 	
