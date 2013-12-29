@@ -863,8 +863,7 @@ function bind(fnc/*, ... */) {
     };
 }
 
-
-$(document).ready(function(){
+function init(){
 	// Overwrite getUniqueName from apps/files/js/files.js (line 1061-1084) to sanitize filename for new files and folders
 	getUniqueName = function(newname){
 			if($('#dir').length != 0 && $('#dir').val().substr(0, 5) == '/'+Wiki.wiki) return Wiki.getUniqueName(Wiki.sanitizeFilename(newname));
@@ -1037,9 +1036,13 @@ $(document).ready(function(){
             //FileActions.icons[t('files_versions', 'Versions')] = null;
 		}
 	}
+	
 	// overwrite Files.isFileNameValid
 	$(window).load(function(){
-		$("a[data-action='Versionen']").remove();
+		// Remove Versioning-action from menu inside wiki
+		if($('#dir').val().substr(0, 5) == '/'+Wiki.wiki){
+			$("a[data-action='"+t('files_versions', 'Versions')+"']").remove();
+		}
 		//console.log(b);
 		if($('#dir').length != 0 && $('#dir').val().substr(0, 5) == '/'+Wiki.wiki){
 		        Files.isFileNameValid = function(name){return Wiki.isFileNameValid(name)};
@@ -1056,8 +1059,28 @@ $(document).ready(function(){
 			$actions.find("a[data-action='Rename']").remove();
 			$actions.find("a[data-action='Share']").remove();
 		}
-	});
+	});	
+	
+}
+
+
+$(document).ready(function(){
+	init();
 });
+
+
+
+$(this).click(
+	function(event) {
+	// Dirty hack to rebuild the menu for outside wiki. If we leave wiki folder, the page must be reload.
+	if($('#dir').val().substr(0, 5) != '/'+Wiki.wiki && $("a[data-action='"+t('dokuwiki', 'Wiki')+"']").exists()){
+		window.location.reload()
+	}
+	init();
+	}
+);
+
+
 
 
 
@@ -1084,6 +1107,8 @@ $(this).click(
 
 	}
 );
+
+
 
 
 
