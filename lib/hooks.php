@@ -80,7 +80,8 @@ class Hooks {
 				Storage::addMediaMetaEntry(0,'','', \OCP\User::getUser(),$path);
 				//Storage::addMediaMetaEntryOLD('',0,'','', \OCP\User::getUser(),$path,true);
 			}
-		}		
+		}
+		Storage::deleteOwnCloudVersions($path);		
 }	
 	
 	/**
